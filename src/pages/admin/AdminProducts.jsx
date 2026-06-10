@@ -1,54 +1,47 @@
 import { useEffect, useMemo, useState } from 'react';
-import axios from 'axios';
+import apiClient from '../../api/axios';
 import { useAuth } from '../../contexts/AuthContext';
 import ProductForm from '../../components/admin/ProductForm';
+import { AnimatePresence, motion } from 'framer-motion';
 
 const initialFormState = {
   name: '',
   description: '',
   price: '',
+  stock_level: '',
   category_id: '',
-  image: null,
+  brand_id: '',
+  gender_category: 'unisex',
+  images: [], // Changed from image: ''
+  specs: [],
 };
 
 function extractItems(response) {
-  if (Array.isArray(response?.data?.data)) {
-    return response.data.data;
-  }
-
-  if (Array.isArray(response?.data)) {
-    return response.data;
-  }
-
+  if (Array.isArray(response?.data?.data)) return response.data.data;
+  
+  if (Array.isArray(response?.data)) return response.data;
   return [];
 }
 
 function getApiErrorMessage(error) {
-  if (error?.response?.data?.message) {
-    return error.response.data.message;
-  }
-
   const validationErrors = error?.response?.data?.errors;
-
-  if (validationErrors) {
-    return Object.values(validationErrors).flat().join(' ');
-  }
-
+  if (validationErrors) return Object.values(validationErrors).flat().join(', ');
+  if (error?.response?.data?.message) return error.response.data.message;
   return 'Something went wrong while saving the product.';
 }
 
 function buildImageUrl(imagePath) {
-  if (!imagePath) {
-    return '';
-  }
-
-  return `/storage/${imagePath}`;
+  if (!imagePath) return '';
+  if (imagePath.startsWith('http://') || imagePath.startsWith('https://')) return imagePath;
+  const apiOrigin = (import.meta.env.VITE_API_URL || 'http://localhost:8000/api').replace(/\/api$/, '');
+  return `${apiOrigin}/storage/${imagePath}`;
 }
 
 export default function AdminProducts() {
   const { token } = useAuth();
   const [products, setProducts] = useState([]);
   const [categories, setCategories] = useState([]);
+  const [brands, setBrands] = useState([]);
   const [loading, setLoading] = useState(true);
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState('');
@@ -56,22 +49,10 @@ export default function AdminProducts() {
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [editingProduct, setEditingProduct] = useState(null);
   const [form, setForm] = useState(initialFormState);
-
-  const selectedFilePreview = useMemo(() => {
-    if (!form.image) {
-      return '';
-    }
-
-    return URL.createObjectURL(form.image);
-  }, [form.image]);
-
-  useEffect(() => {
-    return () => {
-      if (selectedFilePreview) {
-        URL.revokeObjectURL(selectedFilePreview);
-      }
-    };
-  }, [selectedFilePreview]);
+  
+  // Custom Modal States
+  const [isDeleteModalOpen, setIsDeleteModalOpen] = useState(false);
+  const [productToDelete, setProductToDelete] = useState(null);
 
   const authHeaders = useMemo(
     () => ({
@@ -81,18 +62,20 @@ export default function AdminProducts() {
     [token]
   );
 
-  const fetchProductsAndCategories = async () => {
+  const fetchProductsCategoriesAndBrands = async () => {
     setLoading(true);
     setError('');
 
     try {
-      const [productsResponse, categoriesResponse] = await Promise.all([
-        axios.get('/api/admin/products', { headers: authHeaders }),
-        axios.get('/api/admin/categories', { headers: authHeaders }),
+      const [productsResponse, categoriesResponse, brandsResponse] = await Promise.all([
+        apiClient.get('/products', { headers: authHeaders }),
+        apiClient.get('/categories', { headers: authHeaders }),
+        apiClient.get('/brands', { headers: authHeaders }),
       ]);
 
       setProducts(extractItems(productsResponse));
       setCategories(extractItems(categoriesResponse));
+      setBrands(extractItems(brandsResponse));
     } catch (fetchError) {
       setError(getApiErrorMessage(fetchError));
     } finally {
@@ -101,9 +84,9 @@ export default function AdminProducts() {
   };
 
   useEffect(() => {
-    fetchProductsAndCategories();
+    fetchProductsCategoriesAndBrands();
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [token]);
+  }, []);
 
   const openCreateModal = () => {
     setEditingProduct(null);
@@ -118,8 +101,18 @@ export default function AdminProducts() {
       name: product.name || '',
       description: product.description || '',
       price: product.price ?? '',
+      stock_level: product.stock_level ?? '',
       category_id: product.category_id ? String(product.category_id) : '',
-      image: null,
+      brand_id: product.brand_id ? String(product.brand_id) : '',
+      gender_category: product.gender_category || 'unisex',
+      images: (product.images || []).map(img => buildImageUrl(img.image_path)),
+      specs: product.specs ? Object.entries(product.specs).map(([key, value]) => ({ key, value })) : [],
+      variations: (product.variations || []).map(v => ({
+        id: v.id,
+        size_label: v.size_label,
+        price: v.price,
+        stock_quantity: v.stock_quantity,
+      })),
     });
     setFormError('');
     setIsModalOpen(true);
@@ -139,58 +132,54 @@ export default function AdminProducts() {
     }));
   };
 
-  const handleImageSelect = (file) => {
-    setFormField('image', file);
-  };
-
   const handleSubmit = async (event) => {
     event.preventDefault();
     setSubmitting(true);
     setFormError('');
 
-    const payload = new FormData();
-    payload.append('name', form.name);
-    payload.append('description', form.description);
-    payload.append('price', form.price);
-    payload.append('category_id', form.category_id);
+    // Convert specs array [{key, value}] to object {key: value}
+    const specsObject = {};
+    (form.specs || []).forEach(spec => {
+      if (spec.key.trim() !== '') {
+        specsObject[spec.key.trim()] = spec.value;
+      }
+    });
 
-    if (form.image) {
-      payload.append('image', form.image);
+    // Construct JSON payload instead of FormData
+    const payload = {
+      name: form.name,
+      description: form.description,
+      category_id: form.category_id,
+      brand_id: form.brand_id,
+      gender_category: form.gender_category,
+      images: (form.images || []).filter(url => url.trim() !== ''),
+      specs: specsObject,
+      variations: (form.variations || []).map(v => ({
+        id: v.id,
+        size_label: v.size_label,
+        price: v.price,
+        stock_quantity: v.stock_quantity,
+      })),
+    };
+
+    // If no variations exist, use top-level price/stock
+    if (!payload.variations.length) {
+      payload.price = form.price || 0;
+      payload.stock_level = form.stock_level || 0;
     }
 
     try {
+      const url = editingProduct 
+        ? `/admin/products/${editingProduct.id}` 
+        : '/admin/products';
+      
       if (editingProduct) {
-        if (form.image) {
-          payload.append('_method', 'PUT');
-
-          await axios.post(`/api/admin/products/${editingProduct.id}`, payload, {
-            headers: {
-              ...authHeaders,
-            },
-          });
-        } else {
-          await axios.put(
-            `/api/admin/products/${editingProduct.id}`,
-            {
-              name: form.name,
-              description: form.description,
-              price: form.price,
-              category_id: form.category_id,
-            },
-            {
-              headers: authHeaders,
-            }
-          );
-        }
+        await apiClient.put(url, payload, { headers: authHeaders });
       } else {
-        await axios.post('/api/admin/products', payload, {
-          headers: {
-            ...authHeaders,
-          },
-        });
+        await apiClient.post(url, payload, { headers: authHeaders });
       }
 
-      await fetchProductsAndCategories();
+      await fetchProductsCategoriesAndBrands();
       closeModal();
     } catch (saveError) {
       setFormError(getApiErrorMessage(saveError));
@@ -199,13 +188,11 @@ export default function AdminProducts() {
     }
   };
 
-  const tableBody = useMemo(() => {
+  const tableRows = useMemo(() => {
     if (loading) {
       return (
         <tr>
-          <td colSpan="6" style={styles.emptyCell}>
-            Loading products...
-          </td>
+          <td colSpan="7" className="px-4 py-8 text-center text-sm text-stone-500">Loading products...</td>
         </tr>
       );
     }
@@ -213,9 +200,7 @@ export default function AdminProducts() {
     if (error) {
       return (
         <tr>
-          <td colSpan="6" style={styles.emptyCell}>
-            {error}
-          </td>
+          <td colSpan="7" className="px-4 py-8 text-center text-sm text-stone-500">{error}</td>
         </tr>
       );
     }
@@ -223,9 +208,7 @@ export default function AdminProducts() {
     if (!products.length) {
       return (
         <tr>
-          <td colSpan="6" style={styles.emptyCell}>
-            No products found.
-          </td>
+          <td colSpan="7" className="px-4 py-8 text-center text-sm text-stone-500">No products found.</td>
         </tr>
       );
     }
@@ -234,27 +217,34 @@ export default function AdminProducts() {
       const categoryName = categories.find((category) => String(category.id) === String(product.category_id))?.name || 'Uncategorized';
 
       return (
-        <tr key={product.id}>
-          <td style={styles.cell}>
-            <div style={styles.productNameCell}>
+        <tr key={product.id} className="border-t border-stone-100">
+          <td className="px-4 py-4 align-top">
+            <div className="flex min-w-[220px] items-center gap-3">
               {product.image_path ? (
                 <img
                   src={buildImageUrl(product.image_path)}
                   alt={product.name}
-                  style={styles.thumbnail}
+                  className="h-12 w-12 rounded-2xl border border-stone-200 object-cover bg-stone-50"
                 />
               ) : (
-                <div style={styles.thumbnailPlaceholder}>No image</div>
+                <div className="grid h-12 w-12 place-items-center rounded-2xl border border-dashed border-stone-300 bg-stone-50 text-[11px] text-stone-400">
+                  No image
+                </div>
               )}
-              <span>{product.name}</span>
+              <span className="font-medium text-stone-950">{product.name}</span>
             </div>
           </td>
-          <td style={styles.cell}>{categoryName}</td>
-          <td style={styles.cell}>{product.description}</td>
-          <td style={styles.cell}>${Number(product.price).toFixed(2)}</td>
-          <td style={styles.cell}>{product.image_path || 'No file uploaded'}</td>
-          <td style={styles.cell}>
-            <button type="button" onClick={() => openEditModal(product)} style={styles.secondaryButton}>
+          <td className="px-4 py-4 align-top text-sm text-stone-700">{categoryName}</td>
+          <td className="px-4 py-4 align-top text-sm leading-6 text-stone-600">{product.description}</td>
+          <td className="px-4 py-4 align-top text-sm font-medium text-stone-950">RS. {Number(product.price).toFixed(2)}</td>
+          <td className="px-4 py-4 align-top text-sm text-stone-600">{Number(product.stock_level ?? 0)}</td>
+          <td className="px-4 py-4 align-top text-sm text-stone-600">{product.image_path || 'No file uploaded'}</td>
+          <td className="px-4 py-4 align-top">
+            <button
+              type="button"
+              onClick={() => openEditModal(product)}
+              className="rounded-full border border-stone-300 bg-white px-4 py-2 text-xs font-semibold uppercase tracking-[0.22em] text-stone-700 transition hover:border-stone-950 hover:text-stone-950"
+            >
               Edit
             </button>
           </td>
@@ -263,286 +253,206 @@ export default function AdminProducts() {
     });
   }, [categories, error, loading, products]);
 
+  const confirmDelete = (product) => {
+    setProductToDelete(product);
+    setIsDeleteModalOpen(true);
+  };
+
+  const cancelDelete = () => {
+    setIsDeleteModalOpen(false);
+    setProductToDelete(null);
+  };
+
+  const executeDelete = async () => {
+    if (!productToDelete) return;
+
+    setError('');
+    setIsDeleteModalOpen(false);
+
+    try {
+      await apiClient.delete(`/admin/products/${productToDelete.id}`, {
+        headers: authHeaders,
+      });
+      await fetchProductsCategoriesAndBrands();
+    } catch (deleteError) {
+      setError(getApiErrorMessage(deleteError));
+    } finally {
+      setProductToDelete(null);
+    }
+  };
+
   return (
-    <section style={styles.page}>
-      <div style={styles.header}>
+    <section className="grid gap-10">
+      <div className="flex flex-col gap-6 sm:flex-row sm:items-end sm:justify-between">
         <div>
-          <p style={styles.kicker}>Catalog Management</p>
-          <h1 style={styles.title}>Admin Products</h1>
-          <p style={styles.subtitle}>Fetch, create, and update your product inventory from the Laravel API.</p>
+          <p className="text-[10px] font-bold uppercase tracking-[0.4em] text-luxury-gold/90">Inventory Control</p>
+          <h1 className="mt-4 font-serif text-5xl tracking-tight text-white sm:text-6xl">Boutique Products</h1>
         </div>
 
-        <button type="button" onClick={openCreateModal} style={styles.primaryButton}>
-          Add New Product
+        <button
+          type="button"
+          onClick={openCreateModal}
+          className="inline-flex items-center justify-center rounded-full border border-luxury-gold bg-luxury-gold px-8 py-3.5 text-[11px] font-bold uppercase tracking-[0.25em] text-luxury-dark transition-all duration-700 hover:bg-transparent hover:text-luxury-gold shadow-gold-glow"
+        >
+          Add Piece
         </button>
       </div>
 
-      <div style={styles.tableCard}>
-        <div style={styles.tableWrap}>
-          <table style={styles.table}>
-            <thead>
+      <div className="overflow-hidden rounded-[32px] border border-white/5 bg-luxury-charcoal shadow-luxury-md">
+        <div className="overflow-x-auto [&::-webkit-scrollbar]:hidden [-ms-overflow-style:none] [scrollbar-width:none]">
+          <table className="min-w-full border-collapse text-left">
+            <thead className="bg-white/2 text-[9px] font-bold uppercase tracking-[0.3em] text-stone-500 border-b border-white/5">
               <tr>
-                <th style={styles.th}>Product</th>
-                <th style={styles.th}>Category</th>
-                <th style={styles.th}>Description</th>
-                <th style={styles.th}>Price</th>
-                <th style={styles.th}>Image</th>
-                <th style={styles.th}>Actions</th>
+                <th className="px-8 py-6 min-w-[300px]">Product</th>
+                <th className="px-8 py-6">Category</th>
+                <th className="px-8 py-6">Price</th>
+                <th className="px-8 py-6">Stock</th>
+                <th className="px-8 py-6">Status</th>
+                <th className="px-8 py-6 text-right">Actions</th>
               </tr>
             </thead>
-            <tbody>{tableBody}</tbody>
+            <tbody className="divide-y divide-white/5">
+              {loading ? (
+                <tr>
+                  <td colSpan="6" className="px-8 py-20 text-center">
+                    <div className="mx-auto h-6 w-6 animate-spin rounded-full border-2 border-luxury-gold border-t-transparent"></div>
+                  </td>
+                </tr>
+              ) : products.length === 0 ? (
+                <tr>
+                  <td colSpan="6" className="px-8 py-20 text-center text-stone-500 italic">No pieces found in the collection.</td>
+                </tr>
+              ) : products.map((product) => {
+                 const categoryName = categories.find((c) => String(c.id) === String(product.category_id))?.name || 'Exclusive';
+                 
+                 const displayPrice = product.variations?.length > 0 
+                   ? product.variations[0].price 
+                   : product.price;
+
+                 const displayStock = product.variations?.length > 0 
+                   ? product.variations.reduce((acc, curr) => acc + Number(curr.stock_quantity), 0) 
+                   : product.stock_level;
+
+                 return (
+                  <tr key={product.id} className="group hover:bg-white/2 transition-colors duration-500">
+                    <td className="px-8 py-6 min-w-[300px]">
+                      <div className="flex items-center gap-4">
+                        <div className="h-12 w-12 shrink-0 overflow-hidden rounded-xl border border-white/5 bg-luxury-black">
+                          <img src={buildImageUrl(product.image_path)} alt="" className="h-full w-full object-cover" />
+                        </div>
+                        <span className="font-serif text-lg text-white break-words">{product.name}</span>
+                      </div>
+                    </td>
+                    <td className="px-8 py-6 text-sm text-stone-400 whitespace-nowrap">{categoryName}</td>
+                    <td className="px-8 py-6 text-sm font-medium text-luxury-gold whitespace-nowrap">RS. {Number(displayPrice).toFixed(2)}</td>
+                    <td className="px-8 py-6 text-sm text-white whitespace-nowrap">{displayStock ?? 0}</td>
+                    <td className="px-8 py-6 whitespace-nowrap">
+                      <span className={`rounded-full px-3 py-1 text-[9px] font-bold uppercase tracking-[0.2em] border ${
+                        Number(displayStock) > 0 ? 'border-emerald-500/20 bg-emerald-500/5 text-emerald-500' : 'border-rose-500/20 bg-rose-500/5 text-rose-500'
+                      }`}>
+                        {Number(displayStock) > 0 ? 'In Stock' : 'Out of Stock'}
+                      </span>
+                    </td>
+                    <td className="px-8 py-6 text-right whitespace-nowrap space-x-6">
+                      <button
+                        onClick={() => openEditModal(product)}
+                        className="text-[10px] font-bold uppercase tracking-[0.2em] text-stone-500 hover:text-white transition-colors"
+                      >
+                        Edit
+                      </button>
+                      <button
+                        onClick={() => confirmDelete(product)}
+                        className="text-[10px] font-bold uppercase tracking-[0.2em] text-rose-500 hover:text-rose-400 transition-colors"
+                      >
+                        Delete
+                      </button>
+                    </td>
+                  </tr>
+                 )
+              })}
+            </tbody>
           </table>
         </div>
       </div>
 
       {isModalOpen ? (
-        <div style={styles.modalOverlay} onClick={closeModal} role="presentation">
-          <div style={styles.modalCard} onClick={(event) => event.stopPropagation()} role="dialog" aria-modal="true">
-            <div style={styles.modalHeader}>
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-luxury-black/90 px-4 py-10 backdrop-blur-xl transition-all duration-500" onClick={closeModal} role="presentation">
+          <div
+            className="max-h-full w-full max-w-5xl overflow-y-auto rounded-[40px] border border-white/5 bg-luxury-charcoal p-8 shadow-2xl custom-scrollbar sm:p-12"
+            onClick={(event) => event.stopPropagation()}
+            role="dialog"
+            aria-modal="true"
+          >
+            <div className="mb-12 flex items-start justify-between gap-6">
               <div>
-                <p style={styles.kicker}>{editingProduct ? 'Edit Product' : 'New Product'}</p>
-                <h2 style={styles.modalTitle}>{editingProduct ? 'Update product details' : 'Create a new product'}</h2>
+                <p className="text-[10px] font-bold uppercase tracking-[0.5em] text-luxury-gold/90">{editingProduct ? 'Refinement' : 'New Exhibition'}</p>
+                <h2 className="mt-4 font-serif text-4xl tracking-tight text-white sm:text-5xl">
+                  {editingProduct ? 'Update Piece' : 'Add to Collection'}
+                </h2>
               </div>
-              <button type="button" onClick={closeModal} style={styles.iconButton} aria-label="Close modal">
-                ×
+              <button
+                type="button"
+                onClick={closeModal}
+                className="group flex h-12 w-12 items-center justify-center rounded-full border border-white/10 text-white transition-all duration-300 hover:border-luxury-gold hover:text-luxury-gold"
+              >
+                <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                  <path d="M18 6L6 18M6 6l12 12" />
+                </svg>
               </button>
             </div>
 
             <ProductForm
               form={form}
               categories={categories}
+              brands={brands}
               onFieldChange={setFormField}
-              onImageSelect={handleImageSelect}
               onCancel={closeModal}
               onSubmit={handleSubmit}
               submitting={submitting}
               error={formError}
-              imagePreview={selectedFilePreview}
-              existingImageUrl={editingProduct?.image_path ? buildImageUrl(editingProduct.image_path) : ''}
-              submitLabel="Publish"
+              submitLabel={editingProduct ? 'Save Changes' : 'Publish Piece'}
             />
           </div>
         </div>
       ) : null}
+
+      {/* Custom Delete Confirmation Modal */}
+      <AnimatePresence>
+        {isDeleteModalOpen && productToDelete && (
+          <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm px-4" onClick={cancelDelete}>
+            <motion.div
+              initial={{ opacity: 0, scale: 0.95 }}
+              animate={{ opacity: 1, scale: 1 }}
+              exit={{ opacity: 0, scale: 0.95 }}
+              transition={{ duration: 0.2, ease: "easeOut" }}
+              className="w-full max-w-sm rounded-2xl border border-white/10 bg-[#121212] p-8 shadow-2xl"
+              onClick={(e) => e.stopPropagation()}
+            >
+              <h3 className="font-serif text-2xl text-white mb-4">Remove Product?</h3>
+              <p className="text-sm text-stone-400 leading-relaxed mb-8">
+                Are you sure you want to permanently delete <span className="text-white font-medium">{productToDelete.name}</span>? This action cannot be undone.
+              </p>
+              
+              <div className="flex items-center justify-end gap-4">
+                <button
+                  type="button"
+                  onClick={cancelDelete}
+                  className="text-[10px] font-bold uppercase tracking-[0.2em] text-stone-400 hover:text-white transition-colors px-4 py-2"
+                >
+                  Cancel
+                </button>
+                <button
+                  type="button"
+                  onClick={executeDelete}
+                  className="rounded-full border border-red-500/30 px-6 py-2 text-[10px] font-bold uppercase tracking-widest text-red-400 transition-all hover:bg-red-500/10"
+                >
+                  Confirm Removal
+                </button>
+              </div>
+            </motion.div>
+          </div>
+        )}
+      </AnimatePresence>
     </section>
   );
 }
-
-const styles = {
-  page: {
-    display: 'grid',
-    gap: '24px',
-  },
-  header: {
-    display: 'flex',
-    alignItems: 'flex-start',
-    justifyContent: 'space-between',
-    gap: '16px',
-    flexWrap: 'wrap',
-  },
-  kicker: {
-    margin: 0,
-    textTransform: 'uppercase',
-    letterSpacing: '0.16em',
-    fontSize: '12px',
-    color: '#6b7280',
-  },
-  title: {
-    margin: '8px 0 0',
-    fontSize: '34px',
-    lineHeight: 1.1,
-  },
-  subtitle: {
-    margin: '10px 0 0',
-    color: '#6b7280',
-    maxWidth: '64ch',
-  },
-  tableCard: {
-    background: '#ffffff',
-    border: '1px solid #e5e7eb',
-    borderRadius: '20px',
-    overflow: 'hidden',
-    boxShadow: '0 18px 45px rgba(15, 23, 42, 0.06)',
-  },
-  tableWrap: {
-    overflowX: 'auto',
-  },
-  table: {
-    width: '100%',
-    borderCollapse: 'collapse',
-  },
-  th: {
-    padding: '16px',
-    textAlign: 'left',
-    fontSize: '12px',
-    textTransform: 'uppercase',
-    letterSpacing: '0.08em',
-    color: '#6b7280',
-    background: '#f9fafb',
-    borderBottom: '1px solid #e5e7eb',
-    whiteSpace: 'nowrap',
-  },
-  cell: {
-    padding: '16px',
-    borderBottom: '1px solid #f3f4f6',
-    verticalAlign: 'top',
-    color: '#111827',
-  },
-  emptyCell: {
-    padding: '28px 16px',
-    textAlign: 'center',
-    color: '#6b7280',
-  },
-  productNameCell: {
-    display: 'flex',
-    alignItems: 'center',
-    gap: '12px',
-    minWidth: '220px',
-  },
-  thumbnail: {
-    width: '44px',
-    height: '44px',
-    objectFit: 'cover',
-    borderRadius: '12px',
-    border: '1px solid #e5e7eb',
-    background: '#f9fafb',
-  },
-  thumbnailPlaceholder: {
-    width: '44px',
-    height: '44px',
-    borderRadius: '12px',
-    border: '1px dashed #cbd5e1',
-    color: '#6b7280',
-    display: 'grid',
-    placeItems: 'center',
-    fontSize: '11px',
-    textAlign: 'center',
-    background: '#f8fafc',
-  },
-  primaryButton: {
-    border: 'none',
-    borderRadius: '12px',
-    padding: '12px 18px',
-    background: '#111827',
-    color: '#ffffff',
-    fontWeight: 700,
-    cursor: 'pointer',
-    boxShadow: '0 12px 24px rgba(17, 24, 39, 0.18)',
-  },
-  secondaryButton: {
-    border: '1px solid #d1d5db',
-    borderRadius: '12px',
-    padding: '12px 18px',
-    background: '#ffffff',
-    color: '#111827',
-    fontWeight: 700,
-    cursor: 'pointer',
-  },
-  modalOverlay: {
-    position: 'fixed',
-    inset: 0,
-    background: 'rgba(15, 23, 42, 0.58)',
-    display: 'grid',
-    placeItems: 'center',
-    padding: '20px',
-    zIndex: 50,
-  },
-  modalCard: {
-    width: 'min(760px, 100%)',
-    background: '#ffffff',
-    borderRadius: '24px',
-    padding: '24px',
-    boxShadow: '0 32px 80px rgba(15, 23, 42, 0.26)',
-  },
-  modalHeader: {
-    display: 'flex',
-    alignItems: 'flex-start',
-    justifyContent: 'space-between',
-    gap: '16px',
-    marginBottom: '20px',
-  },
-  modalTitle: {
-    margin: '8px 0 0',
-    fontSize: '28px',
-    lineHeight: 1.1,
-  },
-  iconButton: {
-    width: '40px',
-    height: '40px',
-    borderRadius: '999px',
-    border: '1px solid #e5e7eb',
-    background: '#fff',
-    cursor: 'pointer',
-    fontSize: '24px',
-    lineHeight: 1,
-  },
-  form: {
-    display: 'grid',
-    gap: '16px',
-  },
-  label: {
-    display: 'grid',
-    gap: '8px',
-    fontSize: '14px',
-    fontWeight: 600,
-    color: '#111827',
-  },
-  input: {
-    width: '100%',
-    padding: '12px 14px',
-    borderRadius: '12px',
-    border: '1px solid #d1d5db',
-    background: '#fff',
-  },
-  textarea: {
-    width: '100%',
-    padding: '12px 14px',
-    borderRadius: '12px',
-    border: '1px solid #d1d5db',
-    resize: 'vertical',
-    background: '#fff',
-  },
-  fileInput: {
-    width: '100%',
-  },
-  grid: {
-    display: 'grid',
-    gridTemplateColumns: 'repeat(2, minmax(0, 1fr))',
-    gap: '16px',
-  },
-  previewBlock: {
-    display: 'grid',
-    gap: '10px',
-    padding: '14px',
-    borderRadius: '16px',
-    background: '#f9fafb',
-    border: '1px solid #e5e7eb',
-  },
-  previewLabel: {
-    fontSize: '12px',
-    textTransform: 'uppercase',
-    letterSpacing: '0.12em',
-    color: '#6b7280',
-  },
-  previewImage: {
-    width: '100%',
-    maxWidth: '220px',
-    aspectRatio: '1 / 1',
-    objectFit: 'cover',
-    borderRadius: '16px',
-    border: '1px solid #e5e7eb',
-    background: '#fff',
-  },
-  actions: {
-    display: 'flex',
-    justifyContent: 'flex-end',
-    gap: '12px',
-    flexWrap: 'wrap',
-    marginTop: '4px',
-  },
-  formError: {
-    margin: 0,
-    color: '#b91c1c',
-    fontWeight: 600,
-  },
-};

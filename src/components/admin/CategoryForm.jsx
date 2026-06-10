@@ -2,7 +2,10 @@ import { useId } from 'react';
 
 export default function CategoryForm({
   value,
+  descriptionValue,
+  imagePreview,
   onChange,
+  onImageChange,
   onCancel,
   onSubmit,
   submitting = false,
@@ -13,125 +16,81 @@ export default function CategoryForm({
 }) {
   const inputId = useId();
 
+  const inputClasses = "w-full h-12 rounded-2xl border border-white/10 bg-[#1a1a1a] px-5 text-sm text-white placeholder-white/40 outline-none focus:border-white/30 focus:ring-1 focus:ring-white/30 transition-all duration-500";
+  const labelClasses = "block text-[10px] font-bold uppercase tracking-[0.25em] text-white/60 mb-2 pl-1";
+
   return (
-    <form onSubmit={onSubmit} style={styles.card}>
-      <div style={styles.header}>
-        <div>
-          <p style={styles.kicker}>Category</p>
-          <h2 style={styles.title}>{title}</h2>
-          <p style={styles.description}>{description}</p>
-        </div>
+    <form onSubmit={onSubmit} className="space-y-8">
+      <div className="space-y-2">
+        <p className="text-[10px] font-bold uppercase tracking-[0.4em] text-luxury-gold/90">Category</p>
+        <h2 className="font-serif text-2xl text-white sm:text-3xl">{title}</h2>
+        <p className="text-sm leading-7 text-stone-500">{description}</p>
       </div>
 
-      <label htmlFor={inputId} style={styles.label}>
-        Category Name
-        <input
-          id={inputId}
-          type="text"
-          value={value}
-          onChange={(event) => onChange(event.target.value)}
-          placeholder="e.g. Evening Wear"
-          required
-          style={styles.input}
-        />
-      </label>
+      <div className="grid gap-6">
+        <div>
+          <label htmlFor={inputId} className={labelClasses}>Category Name</label>
+          <input
+            id={inputId}
+            type="text"
+            value={value}
+            onChange={(event) => onChange('name', event.target.value)}
+            placeholder="e.g. Evening Wear"
+            required
+            className={inputClasses}
+          />
+        </div>
 
-      {error ? <p style={styles.error}>{error}</p> : null}
+        <div>
+          <label htmlFor={`${inputId}-description`} className={labelClasses}>Description</label>
+          <textarea
+            id={`${inputId}-description`}
+            value={descriptionValue}
+            onChange={(event) => onChange('description', event.target.value)}
+            placeholder="Curate a brief description for this collection..."
+            rows={4}
+            className="w-full resize-none rounded-[24px] border border-white/10 bg-[#1a1a1a] px-6 py-5 text-sm text-white placeholder-white/40 outline-none focus:border-white/30 focus:ring-1 focus:ring-white/30 transition-all duration-500"
+          />
+        </div>
 
-      <div style={styles.actions}>
-        <button type="button" onClick={onCancel} style={styles.cancelButton}>
-          Cancel
-        </button>
-        <button type="submit" disabled={submitting} style={styles.primaryButton}>
-          {submitting ? 'Saving...' : submitLabel}
-        </button>
+        <div>
+          <label htmlFor={`${inputId}-image`} className={labelClasses}>Image URL</label>
+          <input
+            id={`${inputId}-image`}
+            type="url"
+            value={imagePreview}
+            onChange={(event) => onImageChange(event.target.value)}
+            placeholder="https://images.unsplash.com/..."
+            className={inputClasses}
+          />
+        </div>
+
+        {imagePreview ? (
+          <div className="group relative overflow-hidden rounded-[32px] border border-white/5 bg-luxury-black shadow-luxury-sm">
+            <img src={imagePreview} alt="" className="h-48 w-full object-cover transition-transform duration-1000 group-hover:scale-110" />
+            <div className="absolute inset-0 bg-gradient-to-t from-luxury-black/40 via-transparent to-transparent" />
+          </div>
+        ) : null}
+
+        {error ? <p className="text-center text-xs font-bold text-rose-500 tracking-wide uppercase">{error}</p> : null}
+
+        <div className="flex flex-col gap-4 pt-4 sm:flex-row sm:items-center sm:justify-between">
+          <button
+            type="button"
+            onClick={onCancel}
+            className="text-[10px] font-bold uppercase tracking-[0.2em] text-stone-500 hover:text-white transition-colors"
+          >
+            Cancel
+          </button>
+          <button
+            type="submit"
+            disabled={submitting}
+            className="rounded-full border border-luxury-gold bg-luxury-gold px-10 py-4 text-[11px] font-bold uppercase tracking-[0.3em] text-luxury-dark transition-all duration-700 hover:bg-transparent hover:text-luxury-gold shadow-gold-glow disabled:opacity-50"
+          >
+            {submitting ? 'Saving...' : submitLabel}
+          </button>
+        </div>
       </div>
     </form>
   );
 }
-
-const styles = {
-  card: {
-    width: 'min(100%, 560px)',
-    background: '#ffffff',
-    border: '1px solid #e5e7eb',
-    borderRadius: '24px',
-    padding: '28px',
-    boxShadow: '0 18px 45px rgba(15, 23, 42, 0.06)',
-    display: 'grid',
-    gap: '22px',
-  },
-  header: {
-    display: 'grid',
-    gap: '8px',
-  },
-  kicker: {
-    margin: 0,
-    textTransform: 'uppercase',
-    letterSpacing: '0.16em',
-    fontSize: '12px',
-    color: '#6b7280',
-  },
-  title: {
-    margin: 0,
-    fontSize: '28px',
-    lineHeight: 1.1,
-    color: '#111827',
-  },
-  description: {
-    margin: 0,
-    color: '#6b7280',
-    lineHeight: 1.6,
-  },
-  label: {
-    display: 'grid',
-    gap: '10px',
-    color: '#111827',
-    fontSize: '14px',
-    fontWeight: 600,
-  },
-  input: {
-    width: '100%',
-    minHeight: '52px',
-    padding: '14px 16px',
-    borderRadius: '14px',
-    border: '1px solid #e5e7eb',
-    background: '#ffffff',
-    color: '#111827',
-    outline: 'none',
-    transition: 'border-color 160ms ease, box-shadow 160ms ease',
-  },
-  error: {
-    margin: 0,
-    color: '#b91c1c',
-    fontSize: '14px',
-  },
-  actions: {
-    display: 'flex',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-    gap: '16px',
-    flexWrap: 'wrap',
-  },
-  cancelButton: {
-    border: 'none',
-    background: 'transparent',
-    color: '#111827',
-    padding: 0,
-    cursor: 'pointer',
-    fontSize: '14px',
-    fontWeight: 600,
-    textDecoration: 'underline',
-    textUnderlineOffset: '3px',
-  },
-  primaryButton: {
-    border: 'none',
-    borderRadius: '14px',
-    padding: '14px 22px',
-    background: '#111827',
-    color: '#ffffff',
-    fontWeight: 700,
-    cursor: 'pointer',
-    boxShadow: '0 12px 24px rgba(17, 24, 39, 0.18)',
-  },
-};

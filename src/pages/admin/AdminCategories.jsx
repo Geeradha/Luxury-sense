@@ -1,7 +1,8 @@
 import { useEffect, useMemo, useState } from 'react';
-import axios from 'axios';
 import { useAuth } from '../../contexts/AuthContext';
+import apiClient from '../../api/axios';
 import CategoryForm from '../../components/admin/CategoryForm';
+import { motion, AnimatePresence } from 'framer-motion';
 
 function extractItems(response) {
   if (Array.isArray(response?.data?.data)) {
@@ -29,6 +30,28 @@ function getApiErrorMessage(error) {
   return 'Something went wrong while saving the category.';
 }
 
+function normalizeCategory(category) {
+  return {
+    ...category,
+    description: category?.description ?? '',
+    image: category?.image ?? null,
+  };
+}
+
+const apiOrigin = (import.meta.env.VITE_API_URL || 'http://localhost:8000/api').replace(/\/api$/, '');
+
+function resolveImageUrl(path) {
+  if (!path) {
+    return '';
+  }
+
+  if (path.startsWith('http://') || path.startsWith('https://') || path.startsWith('blob:')) {
+    return path;
+  }
+
+  return `${apiOrigin}/storage/${path}`;
+}
+
 export default function AdminCategories() {
   const { token } = useAuth();
   const [categories, setCategories] = useState([]);
@@ -37,12 +60,16 @@ export default function AdminCategories() {
   const [error, setError] = useState('');
   const [formError, setFormError] = useState('');
   const [editingCategory, setEditingCategory] = useState(null);
-  const [categoryName, setCategoryName] = useState('');
+  const [form, setForm] = useState({ name: '', description: '', image: '' });
+  const [imagePreview, setImagePreview] = useState('');
+  
+  // Custom Modal States
+  const [isDeleteModalOpen, setIsDeleteModalOpen] = useState(false);
+  const [categoryToDelete, setCategoryToDelete] = useState(null);
 
   const authHeaders = useMemo(
     () => ({
       Authorization: `Bearer ${token}`,
-      Accept: 'application/json',
     }),
     [token]
   );
@@ -52,8 +79,8 @@ export default function AdminCategories() {
     setError('');
 
     try {
-      const response = await axios.get('/api/admin/categories', { headers: authHeaders });
-      setCategories(extractItems(response));
+      const response = await apiClient.get('/categories', { headers: authHeaders });
+      setCategories(extractItems(response).map(normalizeCategory));
     } catch (fetchError) {
       setError(getApiErrorMessage(fetchError));
     } finally {
@@ -64,17 +91,23 @@ export default function AdminCategories() {
   useEffect(() => {
     fetchCategories();
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [token]);
+  }, []);
 
   const openCreateForm = () => {
     setEditingCategory(null);
-    setCategoryName('');
+    setForm({ name: '', description: '', image: '' });
+    setImagePreview('');
     setFormError('');
   };
 
   const openEditForm = (category) => {
     setEditingCategory(category);
-    setCategoryName(category.name || '');
+    setForm({
+      name: category.name || '',
+      description: category.description || '',
+      image: category.image || '',
+    });
+    setImagePreview(resolveImageUrl(category.image));
     setFormError('');
   };
 
@@ -87,15 +120,21 @@ export default function AdminCategories() {
     setSubmitting(true);
     setFormError('');
 
+    const payload = {
+      name: form.name,
+      description: form.description,
+      image: form.image || null,
+    };
+
     try {
       if (editingCategory) {
-        await axios.put(
-          `/api/admin/categories/${editingCategory.id}`,
-          { name: categoryName },
-          { headers: authHeaders }
-        );
+        await apiClient.put(`/admin/categories/${editingCategory.id}`, payload, {
+          headers: authHeaders,
+        });
       } else {
-        await axios.post('/api/admin/categories', { name: categoryName }, { headers: authHeaders });
+        await apiClient.post('/admin/categories', payload, {
+          headers: authHeaders,
+        });
       }
 
       await fetchCategories();
@@ -107,156 +146,172 @@ export default function AdminCategories() {
     }
   };
 
+  const confirmDelete = (category) => {
+    setCategoryToDelete(category);
+    setIsDeleteModalOpen(true);
+  };
+
+  const cancelDelete = () => {
+    setIsDeleteModalOpen(false);
+    setCategoryToDelete(null);
+  };
+
+  const executeDelete = async () => {
+    if (!categoryToDelete) return;
+
+    setError('');
+    setIsDeleteModalOpen(false);
+
+    try {
+      await apiClient.delete(`/admin/categories/${categoryToDelete.id}`, {
+        headers: authHeaders,
+      });
+
+      if (editingCategory?.id === categoryToDelete.id) {
+        openCreateForm();
+      }
+
+      await fetchCategories();
+    } catch (deleteError) {
+      setError(getApiErrorMessage(deleteError));
+    } finally {
+      setCategoryToDelete(null);
+    }
+  };
+
   return (
-    <section style={styles.page}>
-      <div style={styles.header}>
-        <div>
-          <p style={styles.kicker}>Catalog Management</p>
-          <h1 style={styles.title}>Admin Categories</h1>
-          <p style={styles.subtitle}>Create and update the category structure that powers the product catalog.</p>
-        </div>
+    <section className="grid gap-10">
+      <div className="flex flex-col gap-6">
+        
+        <h1 className="font-serif text-5xl tracking-tight text-white sm:text-6xl">Boutique Categories</h1>
       </div>
 
-      <div style={styles.layout}>
-        <CategoryForm
-          value={categoryName}
-          onChange={setCategoryName}
-          onCancel={handleCancel}
-          onSubmit={handleSubmit}
-          submitting={submitting}
-          error={formError}
-          submitLabel="Save Category"
-          title={editingCategory ? 'Edit Category' : 'New Category'}
-          description={editingCategory ? 'Update the category name and save your changes.' : 'Add a category for a new product grouping.'}
-        />
+      <div className="grid gap-10 lg:grid-cols-[minmax(0,480px)_1fr] lg:items-start">
+        <div className="rounded-[40px] border border-white/5 bg-luxury-black/40 p-8 shadow-luxury-md">
+          <CategoryForm
+            value={form.name}
+            descriptionValue={form.description}
+            imagePreview={imagePreview}
+            onChange={(field, value) => setForm((current) => ({ ...current, [field]: value }))}
+            onCancel={handleCancel}
+            onSubmit={handleSubmit}
+            submitting={submitting}
+            error={formError}
+            submitLabel="Save Collection"
+            title={editingCategory ? 'Refine Collection' : 'New Collection'}
+            description={editingCategory ? 'Update the details of this collection.' : 'Create a new category for a group of artisanal goods.'}
+            onImageChange={(file) => {
+              setForm((current) => ({ ...current, image: file }));
+              setImagePreview(file);
+            }}
+          />
+        </div>
 
-        <div style={styles.listCard}>
-          <div style={styles.listHeader}>
+        <div className="rounded-[40px] border border-white/5 bg-luxury-charcoal p-8 shadow-luxury-md">
+          <div className="flex items-start justify-between gap-6 border-b border-white/5 pb-8 mb-8">
             <div>
-              <p style={styles.kicker}>Existing Categories</p>
-              <h2 style={styles.listTitle}>Category Index</h2>
+              
+              <h2 className="mt-2 font-serif text-3xl tracking-tight text-white">Active Categories</h2>
             </div>
           </div>
 
-          {loading ? (
-            <p style={styles.stateText}>Loading categories...</p>
-          ) : error ? (
-            <p style={styles.stateText}>{error}</p>
-          ) : categories.length ? (
-            <div style={styles.categoryList}>
-              {categories.map((category) => (
-                <div key={category.id} style={styles.categoryRow}>
-                  <div>
-                    <p style={styles.categoryName}>{category.name}</p>
-                    <span style={styles.categoryMeta}>Category ID {category.id}</span>
+          <div className="space-y-6">
+            {loading ? (
+              <div className="py-20 text-center">
+                <div className="mx-auto h-6 w-6 animate-spin rounded-full border-2 border-luxury-gold border-t-transparent"></div>
+              </div>
+            ) : error ? (
+              <div className="rounded-[32px] border border-rose-500/20 bg-rose-500/5 p-8 text-center text-rose-500 font-bold uppercase tracking-widest text-xs">
+                {error}
+              </div>
+            ) : categories.length ? (
+              <div className="grid gap-6">
+                {categories.map((category) => (
+                  <div key={category.id} className="group flex flex-col gap-6 rounded-[32px] border border-white/5 bg-luxury-black/40 p-6 transition-all duration-700 hover:border-luxury-gold/20 sm:flex-row sm:items-center sm:justify-between">
+                    <div className="flex min-w-0 items-center gap-6">
+                      <div className="h-20 w-20 flex-shrink-0 overflow-hidden rounded-2xl border border-white/5 bg-luxury-black shadow-luxury-sm transition-transform duration-700 group-hover:scale-105">
+                        {category.image ? (
+                          <img
+                            src={resolveImageUrl(category.image)}
+                            alt=""
+                            className="h-full w-full object-cover"
+                          />
+                        ) : (
+                          <div className="h-full w-full flex items-center justify-center text-[9px] font-bold uppercase tracking-widest text-stone-700">No Image</div>
+                        )}
+                      </div>
+
+                      <div className="min-w-0">
+                        <p className="font-serif text-xl text-white truncate">{category.name}</p>
+                        <span className="mt-1 block text-[9px] font-bold uppercase tracking-[0.3em] text-luxury-gold/70">
+                          Ref: #{category.id}
+                        </span>
+                      </div>
+                    </div>
+
+                    <div className="flex items-center gap-6">
+                      <button
+                        type="button"
+                        onClick={() => openEditForm(category)}
+                        className="text-[10px] font-bold uppercase tracking-[0.2em] text-stone-500 hover:text-white transition-colors"
+                      >
+                        Refine
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => confirmDelete(category)}
+                        className="text-[10px] font-bold uppercase tracking-[0.2em] text-rose-500 hover:text-rose-400 transition-colors"
+                      >
+                        Remove
+                      </button>
+                    </div>
                   </div>
-                  <button type="button" onClick={() => openEditForm(category)} style={styles.editButton}>
-                    Edit
-                  </button>
-                </div>
-              ))}
-            </div>
-          ) : (
-            <p style={styles.stateText}>No categories found.</p>
-          )}
+                ))}
+              </div>
+            ) : (
+              <p className="py-20 text-center text-sm text-stone-500 italic uppercase tracking-widest">No categories discovered yet.</p>
+            )}
+          </div>
         </div>
       </div>
+
+      {/* Custom Delete Confirmation Modal */}
+      <AnimatePresence>
+        {isDeleteModalOpen && categoryToDelete && (
+          <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm px-4" onClick={cancelDelete}>
+            <motion.div
+              initial={{ opacity: 0, scale: 0.95 }}
+              animate={{ opacity: 1, scale: 1 }}
+              exit={{ opacity: 0, scale: 0.95 }}
+              transition={{ duration: 0.2, ease: "easeOut" }}
+              className="w-full max-w-sm rounded-2xl border border-white/10 bg-[#121212] p-8 shadow-2xl"
+              onClick={(e) => e.stopPropagation()} // Prevent clicking inside modal from closing it
+            >
+              <h3 className="font-serif text-2xl text-white mb-4">Remove Category?</h3>
+              <p className="text-sm text-stone-400 leading-relaxed mb-8">
+                Are you sure you want to permanently delete <span className="text-white font-medium">{categoryToDelete.name}</span>? This action cannot be undone.
+              </p>
+              
+              <div className="flex items-center justify-end gap-4">
+                <button
+                  type="button"
+                  onClick={cancelDelete}
+                  className="text-[10px] font-bold uppercase tracking-[0.2em] text-stone-400 hover:text-white transition-colors px-4 py-2"
+                >
+                  Cancel
+                </button>
+                <button
+                  type="button"
+                  onClick={executeDelete}
+                  className="rounded-full border border-red-500/30 px-6 py-2 text-[10px] font-bold uppercase tracking-widest text-red-400 transition-all hover:bg-red-500/10"
+                >
+                  Confirm Removal
+                </button>
+              </div>
+            </motion.div>
+          </div>
+        )}
+      </AnimatePresence>
     </section>
   );
 }
-
-const styles = {
-  page: {
-    display: 'grid',
-    gap: '24px',
-  },
-  header: {
-    display: 'flex',
-    alignItems: 'flex-start',
-    justifyContent: 'space-between',
-    gap: '16px',
-    flexWrap: 'wrap',
-  },
-  kicker: {
-    margin: 0,
-    textTransform: 'uppercase',
-    letterSpacing: '0.16em',
-    fontSize: '12px',
-    color: '#6b7280',
-  },
-  title: {
-    margin: '8px 0 0',
-    fontSize: '34px',
-    lineHeight: 1.1,
-  },
-  subtitle: {
-    margin: '10px 0 0',
-    color: '#6b7280',
-    maxWidth: '64ch',
-  },
-  layout: {
-    display: 'grid',
-    gridTemplateColumns: 'minmax(0, 560px) minmax(0, 1fr)',
-    gap: '24px',
-    alignItems: 'start',
-  },
-  listCard: {
-    background: '#ffffff',
-    border: '1px solid #e5e7eb',
-    borderRadius: '24px',
-    padding: '28px',
-    boxShadow: '0 18px 45px rgba(15, 23, 42, 0.06)',
-    display: 'grid',
-    gap: '18px',
-  },
-  listHeader: {
-    display: 'flex',
-    alignItems: 'flex-start',
-    justifyContent: 'space-between',
-    gap: '16px',
-  },
-  listTitle: {
-    margin: '8px 0 0',
-    fontSize: '26px',
-    lineHeight: 1.1,
-  },
-  categoryList: {
-    display: 'grid',
-    gap: '12px',
-  },
-  categoryRow: {
-    display: 'flex',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-    gap: '16px',
-    padding: '16px',
-    borderRadius: '18px',
-    border: '1px solid #e5e7eb',
-    background: '#f9fafb',
-  },
-  categoryName: {
-    margin: 0,
-    fontWeight: 700,
-    color: '#111827',
-  },
-  categoryMeta: {
-    display: 'block',
-    marginTop: '4px',
-    color: '#6b7280',
-    fontSize: '13px',
-  },
-  editButton: {
-    border: '1px solid #d1d5db',
-    borderRadius: '999px',
-    padding: '10px 16px',
-    background: '#ffffff',
-    color: '#111827',
-    fontWeight: 700,
-    cursor: 'pointer',
-  },
-  stateText: {
-    margin: 0,
-    color: '#6b7280',
-    lineHeight: 1.6,
-  },
-};

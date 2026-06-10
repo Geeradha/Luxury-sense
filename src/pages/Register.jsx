@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react';
+export { default } from './Signup';import { useEffect, useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { useAuth } from '../contexts/AuthContext';
 import apiClient from '../api/axios';

@@ -9,11 +9,13 @@ export default {
       colors: {
         // Luxury palette
         'luxury': {
-          'black': '#1a1a1a',      // Charcoal black
+          'black': '#0a0a0a',      // Deep black
+          'charcoal': '#141414',   // Dark gray for cards/surfaces
           'white': '#fafafa',      // Soft off-white
           'gold': '#d4af9e',       // Muted champagne gold
+          'gold-light': '#e5cfc4', // Lighter gold for highlights
           'dark': '#0f0f0f',       // Deep black for accents
-          'light': '#f8f8f8',      // Light background
+          'stone': '#a3a3a3',      // Muted stone gray for body text
           'gray': {
             '50': '#fafafa',
             '100': '#f5f5f5',
@@ -27,6 +29,12 @@ export default {
             '900': '#1a1a1a',
           }
         }
+      },
+      boxShadow: {
+        'luxury-sm': '0 4px 20px rgba(0, 0, 0, 0.3)',
+        'luxury-md': '0 12px 40px rgba(0, 0, 0, 0.4)',
+        'luxury-lg': '0 24px 60px rgba(0, 0, 0, 0.5)',
+        'gold-glow': '0 0 20px rgba(212, 175, 158, 0.15)',
       },
       fontFamily: {
         'playfair': ['Playfair Display', 'serif'],
@@ -44,7 +52,8 @@ export default {
         'luxury': '600ms',         // Slow transitions for elegance
       },
       backgroundImage: {
-        'gradient-luxury': 'linear-gradient(135deg, #fafafa 0%, #f5f5f5 100%)',
+        'gradient-luxury': 'linear-gradient(135deg, #0a0a0a 0%, #141414 100%)',
+        'gradient-gold': 'linear-gradient(135deg, rgba(212,175,158,0.15) 0%, transparent 60%)',
       },
     },
   },

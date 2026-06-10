@@ -1,110 +1,113 @@
 import { Link } from 'react-router-dom';
+import { motion, useScroll, useTransform } from 'framer-motion';
+import { useRef } from 'react';
 
 export default function HeroSection() {
+  const containerRef = useRef(null);
+  const { scrollYProgress } = useScroll({
+    target: containerRef,
+    offset: ["start start", "end start"]
+  });
+
+  const y = useTransform(scrollYProgress, [0, 1], ["0%", "30%"]);
+  const opacity = useTransform(scrollYProgress, [0, 0.8], [1, 0]);
+
   return (
     <section
-      style={{
-        position: 'relative',
-        minHeight: '100vh',
-        display: 'grid',
-        placeItems: 'center',
-        overflow: 'hidden',
-        backgroundImage:
-          "linear-gradient(rgba(10, 10, 10, 0.46), rgba(10, 10, 10, 0.52)), url('https://images.unsplash.com/photo-1523381210434-271e8be1f52b?auto=format&fit=crop&w=1600&q=80')",
-        backgroundSize: 'cover',
-        backgroundPosition: 'center',
-        backgroundRepeat: 'no-repeat',
-      }}
+      ref={containerRef}
+      className="relative flex min-h-screen items-center justify-center overflow-hidden bg-luxury-black px-6 sm:px-8"
     >
-      <div
-        style={{
-          position: 'relative',
-          zIndex: 1,
-          width: 'min(92vw, 900px)',
-          textAlign: 'center',
-          padding: 'clamp(2rem, 6vw, 4rem)',
-          color: '#ffffff',
-        }}
+      {/* Parallax Background */}
+      <motion.div 
+        style={{ y }}
+        className="absolute inset-0 z-0"
       >
-        <p
-          style={{
-            margin: 0,
-            marginBottom: '1rem',
-            fontFamily: 'Inter, Lato, sans-serif',
-            fontSize: '0.8rem',
-            fontWeight: 500,
-            letterSpacing: '0.35em',
-            textTransform: 'uppercase',
-            color: 'rgba(255, 255, 255, 0.72)',
-          }}
-        >
-          Luxury Sense
-        </p>
+        <div 
+          className="h-full w-full bg-cover bg-center bg-no-repeat transition-transform duration-1000"
+          style={{ backgroundImage: 'url("/hero_bg.png")' }}
+        />
+        <div className="absolute inset-0 bg-gradient-to-b from-luxury-black/60 via-luxury-black/20 to-luxury-black" />
+      </motion.div>
 
-        <h1
-          style={{
-            margin: 0,
-            fontFamily: 'Playfair Display, Georgia, serif',
-            fontSize: 'clamp(3.5rem, 10vw, 7.5rem)',
-            lineHeight: 0.95,
-            fontWeight: 500,
-            letterSpacing: '-0.03em',
-            textWrap: 'balance',
-          }}
+      {/* Content Reveal */}
+      <motion.div 
+        style={{ opacity }}
+        initial={{ opacity: 0, y: 30 }}
+        animate={{ opacity: 1, y: 0 }}
+        transition={{ duration: 1.2, ease: [0.22, 1, 0.36, 1] }}
+        className="relative z-10 w-full max-w-5xl text-center"
+      >
+        <motion.p 
+          initial={{ opacity: 0, letterSpacing: "0.2em" }}
+          animate={{ opacity: 0.9, letterSpacing: "0.45em" }}
+          transition={{ duration: 1.5, delay: 0.2, ease: "easeOut" }}
+          className="mb-8 text-[11px] font-bold uppercase text-luxury-gold sm:text-xs"
         >
-          Redefining Elegance
-        </h1>
+          Exclusive Collection
+        </motion.p>
 
-        <p
-          style={{
-            width: 'min(100%, 46rem)',
-            margin: '1.5rem auto 0',
-            fontFamily: 'Inter, Lato, sans-serif',
-            fontSize: 'clamp(1rem, 1.5vw, 1.2rem)',
-            lineHeight: 1.8,
-            color: 'rgba(255, 255, 255, 0.84)',
-          }}
+        <motion.h1 
+          initial={{ opacity: 0, y: 40 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ duration: 1.2, delay: 0.4, ease: [0.22, 1, 0.36, 1] }}
+          className="font-serif text-6xl leading-[0.9] tracking-[-0.04em] text-white sm:text-8xl lg:text-9xl"
         >
-          Discover our curated collection of artisanal fragrances, handcrafted footwear, and statement leather goods.
-        </p>
+          Timeless <br className="hidden sm:block" /> Elegance
+        </motion.h1>
 
-        <div style={{ marginTop: '2.25rem' }}>
-          <Link
-            to="/shop"
-            style={{
-              display: 'inline-flex',
-              alignItems: 'center',
-              justifyContent: 'center',
-              minWidth: '14rem',
-              padding: '1rem 1.75rem',
-              backgroundColor: '#111111',
-              color: '#ffffff',
-              textDecoration: 'none',
-              fontFamily: 'Inter, Lato, sans-serif',
-              fontSize: '0.9rem',
-              fontWeight: 600,
-              letterSpacing: '0.12em',
-              textTransform: 'uppercase',
-              border: '1px solid rgba(255, 255, 255, 0.14)',
-              transition: 'transform 320ms ease, background-color 320ms ease, color 320ms ease, border-color 320ms ease',
-            }}
-            onMouseEnter={(event) => {
-              event.currentTarget.style.backgroundColor = '#ffffff';
-              event.currentTarget.style.color = '#111111';
-              event.currentTarget.style.borderColor = '#ffffff';
-              event.currentTarget.style.transform = 'translateY(-1px)';
-            }}
-            onMouseLeave={(event) => {
-              event.currentTarget.style.backgroundColor = '#111111';
-              event.currentTarget.style.color = '#ffffff';
-              event.currentTarget.style.borderColor = 'rgba(255, 255, 255, 0.14)';
-              event.currentTarget.style.transform = 'translateY(0)';
-            }}
+        <motion.p 
+          initial={{ opacity: 0, y: 20 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ duration: 1.2, delay: 0.6, ease: "easeOut" }}
+          className="mx-auto mt-10 max-w-xl text-sm leading-8 text-white/70 sm:text-lg sm:leading-9"
+        >
+          Step into a world of curated artisanal fragrances, handcrafted footwear, and statement leather goods.
+        </motion.p>
+
+        <motion.div 
+          initial={{ opacity: 0, y: 20 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ duration: 1.2, delay: 0.8, ease: "easeOut" }}
+          className="mt-14 flex flex-col items-center justify-center gap-8 sm:flex-row"
+        >
+          <motion.div
+            whileHover={{ scale: 1.05 }}
+            whileTap={{ scale: 0.98 }}
+            transition={{ type: "spring", stiffness: 400, damping: 10 }}
           >
-            Explore the Collection
+            <Link
+              to="/products"
+              className="group relative inline-flex items-center justify-center overflow-hidden rounded-full border border-luxury-gold bg-luxury-gold px-12 py-5 text-[11px] font-bold uppercase tracking-[0.25em] text-luxury-dark transition-colors duration-500 hover:bg-transparent hover:text-luxury-gold shadow-gold-glow"
+            >
+              <span className="relative z-10">Explore Collection</span>
+            </Link>
+          </motion.div>
+
+          <Link
+            to="/heritage"
+            className="group text-[11px] font-bold uppercase tracking-[0.25em] text-white/80 transition-all duration-500 hover:text-white"
+          >
+            <span className="relative">
+              Our Heritage
+              <span className="absolute -bottom-2 left-0 h-px w-0 bg-luxury-gold transition-all duration-500 group-hover:w-full" />
+            </span>
           </Link>
-        </div>
-      </div>
+        </motion.div>
+      </motion.div>
+
+      {/* Scroll Indicator */}
+      <motion.div
+        initial={{ opacity: 0 }}
+        animate={{ opacity: 1 }}
+        transition={{ delay: 2, duration: 1 }}
+        className="absolute bottom-10 left-1/2 -translate-x-1/2"
+      >
+        <motion.div
+          animate={{ y: [0, 10, 0] }}
+          transition={{ duration: 2, repeat: Infinity, ease: "easeInOut" }}
+          className="h-12 w-px bg-gradient-to-b from-luxury-gold/50 to-transparent"
+        />
+      </motion.div>
     </section>
   );
 }

@@ -1,38 +1,17 @@
-import { useEffect, useState } from 'react';
+import { useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useCart } from '../contexts/CartContext';
-
-function formatCurrency(value) {
-  return `$${Number(value || 0).toFixed(2)}`;
-}
+import { motion, AnimatePresence } from 'framer-motion';
 
 export default function CartSlideOut({ isOpen, onClose }) {
   const navigate = useNavigate();
-  const { items, cartTotal, updateQuantity } = useCart();
-  const [isMobile, setIsMobile] = useState(false);
+  const { items, cartTotal, updateQuantity, removeFromCart } = useCart();
 
   useEffect(() => {
-    const updateMobileState = () => {
-      setIsMobile(window.innerWidth < 768);
-    };
+    if (!isOpen) return;
 
-    updateMobileState();
-    window.addEventListener('resize', updateMobileState);
-
-    return () => {
-      window.removeEventListener('resize', updateMobileState);
-    };
-  }, []);
-
-  useEffect(() => {
-    if (!isOpen) {
-      return undefined;
-    }
-
-    const handleKeyDown = (event) => {
-      if (event.key === 'Escape') {
-        onClose?.();
-      }
+    const handleKeyDown = (e) => {
+      if (e.key === 'Escape') onClose?.();
     };
 
     document.body.style.overflow = 'hidden';
@@ -44,329 +23,150 @@ export default function CartSlideOut({ isOpen, onClose }) {
     };
   }, [isOpen, onClose]);
 
-  if (!isOpen) {
-    return null;
-  }
-
   return (
-    <>
-      <button
-        type="button"
-        aria-label="Close shopping tote overlay"
-        onClick={onClose}
-        style={{
-          position: 'fixed',
-          inset: 0,
-          background: 'rgba(17, 17, 17, 0.36)',
-          border: 'none',
-          padding: 0,
-          zIndex: 90,
-          cursor: 'default',
-        }}
-      />
-
-      <aside
-        aria-label="Your Shopping Tote"
-        style={{
-          position: 'fixed',
-          top: isMobile ? 'auto' : 0,
-          right: 0,
-          left: isMobile ? 0 : 'auto',
-          bottom: isMobile ? 0 : 'auto',
-          zIndex: 100,
-          width: isMobile ? '100%' : 'min(100%, 440px)',
-          height: isMobile ? 'min(88vh, 720px)' : '100vh',
-          background: '#ffffff',
-          boxShadow: isMobile ? '0 -18px 36px rgba(17, 17, 17, 0.18)' : '-24px 0 48px rgba(17, 17, 17, 0.12)',
-          display: 'flex',
-          flexDirection: 'column',
-          borderLeft: isMobile ? 'none' : '1px solid #ece8e1',
-          borderTop: isMobile ? '1px solid #ece8e1' : 'none',
-          borderTopLeftRadius: isMobile ? '22px' : 0,
-          borderTopRightRadius: isMobile ? '22px' : 0,
-        }}
-      >
-        <div
-          style={{
-            padding: '1.5rem 1.5rem 1rem',
-            borderBottom: '1px solid #f1ece6',
-            display: 'flex',
-            alignItems: 'flex-start',
-            justifyContent: 'space-between',
-            gap: '1rem',
-          }}
-        >
-          <div>
-            <p
-              style={{
-                margin: 0,
-                fontFamily: 'Inter, Lato, sans-serif',
-                fontSize: '0.72rem',
-                letterSpacing: '0.28em',
-                textTransform: 'uppercase',
-                color: '#8f8a84',
-              }}
-            >
-              Your Shopping Tote
-            </p>
-            <h2
-              style={{
-                margin: '0.45rem 0 0',
-                fontFamily: 'Playfair Display, Georgia, serif',
-                fontSize: '1.9rem',
-                lineHeight: 1.1,
-                fontWeight: 600,
-                color: '#111111',
-              }}
-            >
-              Selected Pieces
-            </h2>
-          </div>
-
-          <button
-            type="button"
+    <AnimatePresence>
+      {isOpen && (
+        <>
+          {/* Backdrop */}
+          <motion.div
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            transition={{ duration: 0.8, ease: [0.22, 1, 0.36, 1] }}
+            className="fixed inset-0 z-[100] bg-black/60 backdrop-blur-md"
             onClick={onClose}
-            aria-label="Close shopping tote"
-            style={{
-              border: 'none',
-              background: 'transparent',
-              color: '#111111',
-              fontFamily: 'Inter, Lato, sans-serif',
-              fontSize: '1.1rem',
-              cursor: 'pointer',
-              padding: '0.2rem 0.3rem',
-            }}
-          >
-            ×
-          </button>
-        </div>
+          />
 
-        <div
-          style={{
-            flex: 1,
-            overflowY: 'auto',
-            padding: '1.25rem 1.5rem 1rem',
-          }}
-        >
-          {items.length ? (
-            <div style={{ display: 'grid', gap: '1.25rem' }}>
-              {items.map((item) => (
-                <div
-                  key={item.id}
-                  style={{
-                    display: 'grid',
-                    gridTemplateColumns: '84px 1fr',
-                    gap: '1rem',
-                    alignItems: 'start',
-                  }}
-                >
-                  <div
-                    style={{
-                      width: '84px',
-                      aspectRatio: '4 / 5',
-                      overflow: 'hidden',
-                      background: '#f6f2ec',
-                    }}
+          {/* Slide-out Panel */}
+          <motion.aside
+            initial={{ x: '100%' }}
+            animate={{ x: 0 }}
+            exit={{ x: '100%' }}
+            transition={{ duration: 0.8, ease: [0.22, 1, 0.36, 1] }}
+            className="fixed top-0 right-0 z-[110] flex h-screen w-full flex-col border-l border-white/5 bg-luxury-charcoal shadow-2xl sm:max-w-md"
+          >
+            {/* Header */}
+            <div className="flex items-center justify-between border-b border-white/5 px-6 py-6 sm:px-8">
+              <motion.div
+                initial={{ opacity: 0, x: 20 }}
+                animate={{ opacity: 1, x: 0 }}
+                transition={{ delay: 0.3, duration: 0.8 }}
+              >
+                <p className="text-[10px] font-bold uppercase tracking-[0.4em] text-luxury-gold/90">Shopping Bag</p>
+                <h2 className="mt-2 font-serif text-3xl tracking-tight text-white">Your Selection</h2>
+              </motion.div>
+              <button
+                onClick={onClose}
+                className="group flex h-10 w-10 items-center justify-center rounded-full border border-white/10 text-white transition-all duration-300 hover:border-luxury-gold hover:text-luxury-gold"
+              >
+                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                  <path d="M18 6L6 18M6 6l12 12" />
+                </svg>
+              </button>
+            </div>
+
+            {/* Content */}
+            <div className="flex-1 overflow-y-auto px-6 py-8 sm:px-8 custom-scrollbar">
+              {items.length === 0 ? (
+                <div className="flex h-full flex-col items-center justify-center text-center">
+                  <p className="text-lg text-stone-500 font-serif">Your selection is empty.</p>
+                  <button
+                    onClick={onClose}
+                    className="mt-8 text-[10px] font-bold uppercase tracking-[0.3em] text-luxury-gold transition-all duration-500"
                   >
-                    {item.image_path ? (
-                      <img
-                        src={item.image_path.startsWith('http') ? item.image_path : `/storage/${item.image_path}`}
-                        alt={item.name}
-                        style={{
-                          width: '100%',
-                          height: '100%',
-                          objectFit: 'cover',
-                          display: 'block',
-                        }}
-                      />
-                    ) : null}
-                  </div>
-
-                  <div style={{ minWidth: 0 }}>
-                    <h3
-                      style={{
-                        margin: 0,
-                        fontFamily: 'Playfair Display, Georgia, serif',
-                        fontSize: '1.05rem',
-                        lineHeight: 1.2,
-                        fontWeight: 600,
-                        color: '#111111',
-                      }}
-                    >
-                      {item.name}
-                    </h3>
-
-                    <p
-                      style={{
-                        margin: '0.4rem 0 0',
-                        fontFamily: 'Inter, Lato, sans-serif',
-                        color: '#8b8b8b',
-                        fontSize: '0.92rem',
-                      }}
-                    >
-                      {formatCurrency(item.price)}
-                    </p>
-
-                    <div
-                      style={{
-                        marginTop: '0.95rem',
-                        display: 'flex',
-                        alignItems: 'center',
-                        justifyContent: 'space-between',
-                        gap: '1rem',
-                      }}
-                    >
-                      <div
-                        style={{
-                          display: 'inline-flex',
-                          alignItems: 'center',
-                          gap: '0.7rem',
-                          fontFamily: 'Inter, Lato, sans-serif',
-                          color: '#111111',
-                          letterSpacing: '0.08em',
-                          textTransform: 'uppercase',
-                          fontSize: '0.72rem',
-                        }}
-                      >
-                        <button
-                          type="button"
-                          onClick={() => updateQuantity(item.id, -1)}
-                          style={{
-                            border: 'none',
-                            background: 'transparent',
-                            color: '#111111',
-                            cursor: 'pointer',
-                            padding: 0,
-                            fontSize: '1.2rem',
-                            lineHeight: 1,
-                            opacity: 0.85,
-                          }}
-                        >
-                          −
-                        </button>
-
-                        <span style={{ minWidth: '1.1rem', textAlign: 'center' }}>{item.quantity}</span>
-
-                        <button
-                          type="button"
-                          onClick={() => updateQuantity(item.id, 1)}
-                          style={{
-                            border: 'none',
-                            background: 'transparent',
-                            color: '#111111',
-                            cursor: 'pointer',
-                            padding: 0,
-                            fontSize: '1.05rem',
-                            lineHeight: 1,
-                            opacity: 0.85,
-                          }}
-                        >
-                          +
-                        </button>
-                      </div>
-                    </div>
-                  </div>
+                    <span className="relative">
+                      Continue Exploring
+                      <span className="absolute -bottom-2 left-0 h-px w-full bg-luxury-gold/30" />
+                    </span>
+                  </button>
                 </div>
-              ))}
+              ) : (
+                <div className="space-y-10">
+                  {items.map((item, index) => (
+                    <motion.div 
+                      key={item.id} 
+                      initial={{ opacity: 0, y: 20 }}
+                      animate={{ opacity: 1, y: 0 }}
+                      transition={{ delay: 0.4 + index * 0.1, duration: 0.8 }}
+                      className="group relative flex gap-6"
+                    >
+                      <div className="h-28 w-24 shrink-0 overflow-hidden rounded-2xl border border-white/5 bg-luxury-black shadow-lg">
+                        <motion.img
+                          src={item.image_path ? (item.image_path.startsWith('http') ? item.image_path : `${(import.meta.env.VITE_API_URL || 'http://localhost:8000/api').replace(/\/api$/, '')}/storage/${item.image_path}`) : ''}
+                          alt={item.name}
+                          whileHover={{ scale: 1.1 }}
+                          transition={{ duration: 0.8 }}
+                          className="h-full w-full object-cover"
+                        />
+                      </div>
+                      <div className="flex flex-1 flex-col justify-between py-1">
+                        <div>
+                          <h3 className="font-serif text-xl text-white group-hover:text-luxury-gold transition-colors duration-500">{item.name}</h3>
+                          <p className="mt-1 text-sm font-medium text-luxury-gold">RS. {Number(item.price).toFixed(2)}</p>
+                        </div>
+                        <div className="flex items-center justify-between">
+                          <div className="flex items-center rounded-full border border-white/10 bg-white/5 px-2">
+                            <button
+                              onClick={() => updateQuantity(item.id, item.quantity - 1)}
+                              className="w-8 h-8 flex items-center justify-center text-stone-400 hover:text-white transition-colors"
+                            >
+                              −
+                            </button>
+                            <span className="w-8 h-8 flex items-center justify-center text-xs font-bold text-white">
+                              {item.quantity}
+                            </span>
+                            <button
+                              onClick={() => updateQuantity(item.id, item.quantity + 1)}
+                              className="w-8 h-8 flex items-center justify-center text-stone-400 hover:text-white transition-colors"
+                            >
+                              +
+                            </button>
+                          </div>
+                          <button
+                            onClick={() => removeFromCart(item.id)}
+                            className="text-[9px] font-bold uppercase tracking-[0.2em] text-stone-500 hover:text-rose-500 transition-colors"
+                          >
+                            Remove
+                          </button>
+                        </div>
+                      </div>
+                    </motion.div>
+                  ))}
+                </div>
+              )}
             </div>
-          ) : (
-            <div
-              style={{
-                height: '100%',
-                minHeight: '220px',
-                display: 'grid',
-                placeItems: 'center',
-                textAlign: 'center',
-                color: '#8b8b8b',
-                padding: '2rem 0',
-              }}
-            >
-              <div>
-                <p
-                  style={{
-                    margin: 0,
-                    fontFamily: 'Playfair Display, Georgia, serif',
-                    fontSize: '1.25rem',
-                    color: '#111111',
+
+            {/* Footer */}
+            {items.length > 0 && (
+              <motion.div 
+                initial={{ opacity: 0, y: 20 }}
+                animate={{ opacity: 1, y: 0 }}
+                transition={{ delay: 0.6, duration: 0.8 }}
+                className="border-t border-white/5 bg-white/2 px-6 py-10 sm:px-8"
+              >
+                <div className="mb-8 flex items-center justify-between">
+                  <span className="text-[10px] font-bold uppercase tracking-[0.4em] text-stone-500">Subtotal</span>
+                  <span className="font-serif text-2xl text-white">RS. {cartTotal.toFixed(2)}</span>
+                </div>
+                <motion.button
+                  whileHover={{ scale: 1.02 }}
+                  whileTap={{ scale: 0.98 }}
+                  onClick={() => {
+                    onClose();
+                    navigate('/checkout');
                   }}
+                  className="w-full rounded-full border border-luxury-gold bg-luxury-gold py-5 text-[11px] font-bold uppercase tracking-[0.3em] text-luxury-dark transition-all duration-700 hover:bg-transparent hover:text-luxury-gold shadow-gold-glow"
                 >
-                  Your tote is empty.
+                  Secure Checkout
+                </motion.button>
+                <p className="mt-6 text-center text-[9px] font-bold uppercase tracking-[0.3em] text-stone-600 font-sans">
+                  Complimentary Delivery Included
                 </p>
-                <p style={{ margin: '0.5rem 0 0', fontFamily: 'Inter, Lato, sans-serif' }}>
-                  Add a few pieces to begin your edit.
-                </p>
-              </div>
-            </div>
-          )}
-        </div>
-
-        <div
-          style={{
-            padding: '1.25rem 1.5rem 1.5rem',
-            borderTop: '1px solid #f1ece6',
-            background: '#ffffff',
-            position: isMobile ? 'sticky' : 'static',
-            bottom: isMobile ? 0 : 'auto',
-            zIndex: 2,
-          }}
-        >
-          <div
-            style={{
-              display: 'flex',
-              alignItems: 'center',
-              justifyContent: 'space-between',
-              gap: '1rem',
-              marginBottom: '1rem',
-            }}
-          >
-            <span
-              style={{
-                fontFamily: 'Inter, Lato, sans-serif',
-                fontSize: '0.72rem',
-                letterSpacing: '0.24em',
-                textTransform: 'uppercase',
-                color: '#8f8a84',
-              }}
-            >
-              Total
-            </span>
-            <strong
-              style={{
-                fontFamily: 'Playfair Display, Georgia, serif',
-                fontSize: '1.45rem',
-                color: '#111111',
-              }}
-            >
-              {formatCurrency(cartTotal)}
-            </strong>
-          </div>
-
-          <button
-            type="button"
-            onClick={() => {
-              onClose?.();
-              navigate('/checkout');
-            }}
-            disabled={!items.length}
-            style={{
-              width: '100%',
-              border: 'none',
-              background: items.length ? '#111111' : '#8f8f8f',
-              color: '#ffffff',
-              fontFamily: 'Inter, Lato, sans-serif',
-              fontSize: '0.85rem',
-              fontWeight: 600,
-              letterSpacing: '0.12em',
-              textTransform: 'uppercase',
-              padding: '1rem 1.1rem',
-              cursor: items.length ? 'pointer' : 'not-allowed',
-              transition: 'background-color 260ms ease, transform 260ms ease',
-            }}
-          >
-            Proceed to Secure Checkout
-          </button>
-        </div>
-      </aside>
-    </>
+              </motion.div>
+            )}
+          </motion.aside>
+        </>
+      )}
+    </AnimatePresence>
   );
 }
