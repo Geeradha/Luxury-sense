@@ -3,6 +3,10 @@ import react from '@vitejs/plugin-react'
 
 export default defineConfig({
   plugins: [react()],
+  build: {
+    outDir: 'backend/public',
+    emptyOutDir: false, // Don't empty because it contains Laravel's index.php and .htaccess
+  },
   server: {
     port: 5173,
     proxy: {

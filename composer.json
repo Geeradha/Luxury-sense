@@ -1,6 +1,0 @@
-{
-    "name": "user/luxurysense",
-    "require": {
-        "laravel/framework": "^13.7"
-    }
-}
