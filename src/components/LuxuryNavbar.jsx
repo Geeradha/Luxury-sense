@@ -196,45 +196,93 @@ const LuxuryNavbar = () => {
         {/* Mobile Slide-over Menu */}
         <AnimatePresence>
           {isMenuOpen && (
-            <motion.div 
-              initial={{ x: '-100%' }}
-              animate={{ x: 0 }}
-              exit={{ x: '-100%' }}
-              transition={{ duration: 0.8, ease: [0.22, 1, 0.36, 1] }}
-              className="fixed inset-0 z-[60] bg-luxury-black p-10 md:hidden"
-            >
-              <button onClick={closeMenu} className="absolute right-10 top-10 text-stone-400 hover:text-white">
-                <svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5">
-                  <path d="M18 6L6 18M6 6l12 12" />
-                </svg>
-              </button>
+            <>
+              {/* Backdrop */}
+              <motion.div
+                initial={{ opacity: 0 }}
+                animate={{ opacity: 1 }}
+                exit={{ opacity: 0 }}
+                transition={{ duration: 0.8, ease: [0.22, 1, 0.36, 1] }}
+                className="fixed inset-0 z-[100] bg-black/60 backdrop-blur-md md:hidden"
+                onClick={closeMenu}
+              />
 
-              <div className="flex h-full flex-col justify-center gap-12">
-                {[
-                  { label: 'Boutique', path: '/products' },
-                  { label: 'Brands', path: '/brands' },
-                  { label: 'Heritage', path: '/heritage' },
-                  { label: 'Contact', path: '/contact' },
-                  { label: 'Wishlist', path: '/wishlist' },
-                  { label: 'Profile', path: '/profile' }
-                ].map((link, i) => (
+              {/* Drawer */}
+              <motion.aside
+                initial={{ x: '-100%' }}
+                animate={{ x: 0 }}
+                exit={{ x: '-100%' }}
+                transition={{ duration: 0.8, ease: [0.22, 1, 0.36, 1] }}
+                className="fixed top-0 left-0 z-[110] flex h-screen w-full flex-col border-r border-white/5 bg-luxury-charcoal shadow-2xl sm:max-w-md md:hidden"
+              >
+                {/* Header */}
+                <div className="flex items-center justify-between border-b border-white/5 px-6 py-8 sm:px-8">
                   <motion.div
-                    key={link.label}
                     initial={{ opacity: 0, x: -20 }}
                     animate={{ opacity: 1, x: 0 }}
-                    transition={{ delay: 0.2 + i * 0.1, duration: 0.8 }}
+                    transition={{ delay: 0.3, duration: 0.8 }}
                   >
-                    <NavLink
-                      to={link.path}
-                      onClick={closeMenu}
-                      className="font-serif text-5xl text-stone-200 transition-colors hover:text-luxury-gold"
-                    >
-                      {link.label}
-                    </NavLink>
+                    <p className="text-[10px] font-bold uppercase tracking-[0.4em] text-luxury-gold/90">Boutique</p>
+                    <h2 className="mt-2 font-serif text-3xl tracking-tight text-white">Menu</h2>
                   </motion.div>
-                ))}
-              </div>
-            </motion.div>
+                  <button
+                    onClick={closeMenu}
+                    className="group flex h-10 w-10 items-center justify-center rounded-full border border-white/10 text-white transition-all duration-300 hover:border-luxury-gold hover:text-luxury-gold"
+                  >
+                    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                      <path d="M18 6L6 18M6 6l12 12" />
+                    </svg>
+                  </button>
+                </div>
+
+                {/* Navigation Items */}
+                <div className="flex-1 overflow-y-auto px-6 py-10 sm:px-8 custom-scrollbar">
+                  <div className="flex flex-col gap-4">
+                    {[
+                      { label: 'Boutique', path: '/products' },
+                      { label: 'Brands', path: '/brands' },
+                      { label: 'Heritage', path: '/heritage' },
+                      { label: 'Contact', path: '/contact' },
+                      { label: 'Wishlist', path: '/wishlist' },
+                      { label: 'Profile', path: '/profile' }
+                    ].map((link, i) => (
+                      <motion.div
+                        key={link.label}
+                        initial={{ opacity: 0, x: -20 }}
+                        animate={{ opacity: 1, x: 0 }}
+                        transition={{ delay: 0.4 + i * 0.1, duration: 0.8 }}
+                      >
+                        <NavLink
+                          to={link.path}
+                          onClick={closeMenu}
+                          className={({ isActive }) => 
+                            `flex items-center justify-between rounded-2xl border px-6 py-5 transition-all duration-500 ${
+                              isActive
+                                ? 'border-luxury-gold/20 bg-luxury-gold/5 text-luxury-gold shadow-[0_0_20px_rgba(212,175,158,0.1)]'
+                                : 'border-transparent bg-transparent text-stone-400 hover:border-white/5 hover:bg-white/5 hover:text-white'
+                            }`
+                          }
+                        >
+                          <span className="font-serif text-2xl tracking-tight">
+                            {link.label}
+                          </span>
+                          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="opacity-0 transition-all duration-500 group-hover:opacity-100">
+                            <path d="m9 18 6-6-6-6" />
+                          </svg>
+                        </NavLink>
+                      </motion.div>
+                    ))}
+                  </div>
+                </div>
+
+                {/* Footer */}
+                <div className="border-t border-white/5 bg-white/2 px-6 py-10 sm:px-8">
+                  <p className="text-center text-[9px] font-bold uppercase tracking-[0.3em] text-stone-600">
+                    © 2026 LUXURY SENSE • CURATED EXCELLENCE
+                  </p>
+                </div>
+              </motion.aside>
+            </>
           )}
         </AnimatePresence>
       </motion.nav>
