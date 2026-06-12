@@ -1,11 +1,14 @@
 import { defineConfig } from 'vite'
 import react from '@vitejs/plugin-react'
 
+// https://vitejs.dev/config/
 export default defineConfig({
   plugins: [react()],
   build: {
-    outDir: 'backend/public',
-    emptyOutDir: false, // Don't empty because it contains Laravel's index.php and .htaccess
+    // When building on Vercel, output to 'dist'. 
+    // Otherwise, output to 'backend/public' for local Laravel development.
+    outDir: process.env.VERCEL ? 'dist' : 'backend/public',
+    emptyOutDir: !!process.env.VERCEL, // True for Vercel (dist), False for local (backend/public)
   },
   server: {
     port: 5173,
