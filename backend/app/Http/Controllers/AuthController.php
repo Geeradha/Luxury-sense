@@ -6,6 +6,7 @@ use App\Mail\OtpMail;
 use App\Models\User;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\Hash;
 use Illuminate\Support\Facades\Mail;
 use Illuminate\Support\Facades\Password;
@@ -23,44 +24,51 @@ class AuthController extends Controller
 
         $otpCode = (string) random_int(100000, 999999);
 
-        $user = User::create([
+        // Store pending registration data in cache for 15 minutes
+        Cache::put('pending_registration_' . $validated['email'], [
             'name' => $validated['name'],
             'email' => $validated['email'],
             'password' => Hash::make($validated['password']),
-            'otp_code' => $otpCode,
-            'role' => 'customer',
-        ]);
+            'otp' => $otpCode,
+        ], now()->addMinutes(15));
 
-        Mail::to($user->email)->send(new OtpMail($otpCode));
+        Mail::to($validated['email'])->send(new OtpMail($otpCode));
 
         return response()->json([
-            'message' => 'Registration successful. Please verify your email with the OTP sent to your inbox.',
+            'message' => 'Registration data saved. Please verify your email with the OTP sent to your inbox.',
         ], 201);
     }
 
     public function verifyOtp(Request $request): JsonResponse
     {
         $validated = $request->validate([
-            'email' => ['required', 'string', 'email', 'exists:users,email'],
+            'email' => ['required', 'string', 'email'],
             'otp' => ['required', 'string', 'digits:6'],
         ]);
 
-        $user = User::where('email', $validated['email'])->first();
+        $pendingUser = Cache::get('pending_registration_' . $validated['email']);
 
-        if (! $user || $user->otp_code !== $validated['otp']) {
+        if (!$pendingUser || $pendingUser['otp'] !== $validated['otp']) {
             return response()->json([
-                'message' => 'Invalid OTP.',
+                'message' => 'Invalid or expired OTP.',
             ], 422);
         }
 
-        $user->forceFill([
+        // Create the user now that OTP is verified
+        $user = User::create([
+            'name' => $pendingUser['name'],
+            'email' => $pendingUser['email'],
+            'password' => $pendingUser['password'], // Already hashed
+            'role' => 'customer',
             'email_verified_at' => now(),
-            'otp_code' => null,
-        ])->save();
+        ]);
+
+        Cache::forget('pending_registration_' . $validated['email']);
 
         return response()->json([
-            'message' => 'Email verified successfully.',
-        ], 200);
+            'message' => 'Email verified and account created successfully.',
+            'user' => $user,
+        ], 201);
     }
 
     public function login(Request $request): JsonResponse

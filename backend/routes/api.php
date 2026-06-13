@@ -41,6 +41,7 @@ Route::prefix('admin')->middleware(['auth:sanctum', 'isAdmin'])->group(function 
     Route::put('orders/bulk-status', [AdminOrderController::class, 'bulkUpdateStatus']);
     Route::get('orders', [AdminOrderController::class, 'index']);
     Route::get('customers', [AdminCustomerController::class, 'index']);
+    Route::delete('customers/{customer}', [AdminCustomerController::class, 'destroy']);
     Route::get('product-questions', [AdminProductQuestionController::class, 'index']);
     Route::get('contact-messages', [ContactController::class, 'index']);
     Route::put('contact-messages/{contactMessage}', [ContactController::class, 'update']);
