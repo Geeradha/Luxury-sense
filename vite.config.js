@@ -5,13 +5,21 @@ import react from '@vitejs/plugin-react'
 export default defineConfig({
   plugins: [react()],
   build: {
-    // When building on Vercel, output to 'dist'. 
-    // Otherwise, output to 'backend/public' for local Laravel development.
-    outDir: process.env.VERCEL ? 'dist' : 'backend/public',
-    emptyOutDir: !!process.env.VERCEL, // True for Vercel (dist), False for local (backend/public)
+    // Output to 'dist' by default for both local and production (Vercel) builds.
+    outDir: 'dist',
+    emptyOutDir: true,
   },
   server: {
     port: 5173,
+    proxy: {
+      '/api': {
+        target: 'http://127.0.0.1:8000',
+        changeOrigin: true,
+      }
+    }
+  },
+  preview: {
+    port: 4173,
     proxy: {
       '/api': {
         target: 'http://127.0.0.1:8000',
