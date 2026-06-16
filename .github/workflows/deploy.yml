@@ -1,0 +1,37 @@
+name: Deploy Luxury Sense to AWS EC2
+
+on:
+  push:
+    branches:
+      - main # This triggers the deployment when you push to the main branch
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Deploy to Server via SSH
+        uses: appleboy/ssh-action@v1.0.3
+        with:
+          host: ${{ secrets.EC2_HOST }}
+          username: ${{ secrets.EC2_USERNAME }}
+          key: ${{ secrets.EC2_SSH_KEY }}
+          script: |
+            # 1. Navigate to the project folder
+            cd /var/www/luxury-sense
+            
+            # 2. Pull the newest code from GitHub
+            git pull origin main
+            
+            # 3. Rebuild the React Frontend
+            npm install
+            npm run build
+            
+            # 4. Clear Backend Caches to apply changes
+            cd backend
+            php artisan optimize:clear
+            
+            # 5. Lock down permissions so Nginx can read the new files
+            sudo chown -R www-data:www-data /var/www/luxury-sense/dist
+            sudo chown -R www-data:www-data /var/www/luxury-sense/backend/storage
+            sudo chmod -R 775 /var/www/luxury-sense/backend/storage
