@@ -9,6 +9,7 @@ import AdminCustomers from './pages/admin/AdminCustomers';
 import AdminOrders from './pages/admin/AdminOrders';
 import AdminQuestions from './pages/admin/AdminQuestions';
 import AdminProducts from './pages/admin/AdminProducts';
+import AdminUsers from './pages/admin/AdminUsers';
 import BrandsList from './pages/BrandsList';
 import BrandDetails from './pages/BrandDetails';
 import ContactUs from './pages/ContactUs';
@@ -67,6 +68,7 @@ export default function App() {
             <Route path="/admin/customers" element={<AdminCustomers />} />
             <Route path="/admin/questions" element={<AdminQuestions />} />
             <Route path="/admin/contact-messages" element={<MessageInbox />} />
+            <Route path="/admin/users" element={<AdminUsers />} />
           </Route>
         </Route>
 

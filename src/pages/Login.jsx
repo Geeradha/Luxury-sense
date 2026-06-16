@@ -2,21 +2,24 @@ import { useEffect, useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import apiClient from '../api/axios';
 import { useAuth } from '../contexts/AuthContext';
+import { Eye, EyeOff } from 'lucide-react';
 
 export default function Login() {
   const navigate = useNavigate();
-  const { login, token, role } = useAuth();
+  const { login, token, role, user } = useAuth();
   const [form, setForm] = useState({ email: '', password: '' });
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [error, setError] = useState('');
+  const [showPassword, setShowPassword] = useState(false);
 
   useEffect(() => {
-    if (!token) {
+    if (!token || !role) {
       return;
     }
 
-    navigate(role === 'admin' ? '/admin/dashboard' : '/shop', { replace: true });
-  }, [navigate, role, token]);
+    const isAdmin = user?.is_admin || ['admin', 'super-admin', 'editor'].includes(role);
+    navigate(isAdmin ? '/admin/dashboard' : '/', { replace: true });
+  }, [navigate, role, token, user]);
 
   const handleChange = (event) => {
     const { name, value } = event.target;
@@ -31,7 +34,7 @@ export default function Login() {
     try {
       const response = await apiClient.post('/login', form);
       const payload = response.data ?? {};
-      const user = payload.user ?? null;
+      const userValue = payload.user ?? null;
       const tokenValue = payload.token ?? null;
       const loginAt = Date.now();
 
@@ -39,14 +42,18 @@ export default function Login() {
         localStorage.setItem('auth_token', tokenValue);
       }
 
+      // 1. Update global state BEFORE redirecting
       login({
-        user,
+        user: userValue,
         token: tokenValue,
-        role: user?.role ?? null,
+        role: userValue?.role ?? null,
         loginAt,
       });
 
-      navigate(user?.role === 'admin' ? '/admin/dashboard' : '/shop', { replace: true });
+      // 2. Perform role-based redirect immediately using response data
+      const userRole = userValue?.role ?? null;
+      const isAdmin = userValue?.is_admin || ['admin', 'super-admin', 'editor'].includes(userRole);
+      navigate(isAdmin ? '/admin/dashboard' : '/', { replace: true });
     } catch (loginError) {
       const status = loginError?.response?.status;
       const message = loginError?.response?.data?.message || 'Unable to sign in. Please try again.';
@@ -94,16 +101,25 @@ export default function Login() {
                   Forgot?
                 </Link>
               </div>
-              <input
-                id="login-password"
-                type="password"
-                name="password"
-                value={form.password}
-                onChange={handleChange}
-                placeholder="••••••••"
-                required
-                className="w-full rounded-2xl border border-white/10 bg-luxury-black/50 px-5 py-4 text-sm text-white outline-none focus:border-luxury-gold/50"
-              />
+              <div className="relative">
+                <input
+                  id="login-password"
+                  type={showPassword ? "text" : "password"}
+                  name="password"
+                  value={form.password}
+                  onChange={handleChange}
+                  placeholder="••••••••"
+                  required
+                  className="w-full rounded-2xl border border-white/10 bg-luxury-black/50 px-5 py-4 pr-12 text-sm text-white outline-none focus:border-luxury-gold/50 transition-all"
+                />
+                <button
+                  type="button"
+                  onClick={() => setShowPassword(!showPassword)}
+                  className="absolute right-4 top-1/2 -translate-y-1/2 text-stone-500 hover:text-white transition-colors"
+                >
+                  {showPassword ? <EyeOff size={18} /> : <Eye size={18} />}
+                </button>
+              </div>
             </div>
 
             {error ? (

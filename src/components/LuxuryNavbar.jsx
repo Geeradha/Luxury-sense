@@ -14,9 +14,10 @@ const LuxuryNavbar = () => {
   const [isCartOpen, setIsCartOpen] = useState(false);
   const [isMenuOpen, setIsMenuOpen] = useState(false);
   const { items } = useCart();
-  const { token } = useAuth();
+  const { token, role, user } = useAuth();
   const { wishlistItems } = useWishlist();
 
+  const isAdmin = user?.is_admin || ['admin', 'super-admin', 'editor'].includes(role);
   const cartCount = items.reduce((sum, item) => sum + item.quantity, 0);
   const wishlistCount = wishlistItems?.length || 0;
 
@@ -68,7 +69,8 @@ const LuxuryNavbar = () => {
               { label: 'Boutique', path: '/products' },
               { label: 'Brands', path: '/brands' },
               { label: 'Heritage', path: '/heritage' },
-              { label: 'Contact', path: '/contact' }
+              { label: 'Contact', path: '/contact' },
+              ...(isAdmin ? [{ label: 'Admin', path: '/admin/dashboard' }] : [])
             ].map((link) => (
               <NavLink key={link.label} to={link.path} className={navLinkClass}>
                 {link.label}
@@ -243,6 +245,7 @@ const LuxuryNavbar = () => {
                       { label: 'Brands', path: '/brands' },
                       { label: 'Heritage', path: '/heritage' },
                       { label: 'Contact', path: '/contact' },
+                      ...(isAdmin ? [{ label: 'Admin', path: '/admin/dashboard' }] : []),
                       { label: 'Wishlist', path: '/wishlist' },
                       { label: 'Profile', path: '/profile' }
                     ].map((link, i) => (

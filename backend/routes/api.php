@@ -1,5 +1,6 @@
 <?php
 
+use App\Http\Controllers\AdminUserController;
 use App\Http\Controllers\ContactController;
 use App\Http\Controllers\BrandController;
 use App\Http\Controllers\AuthController;
@@ -46,6 +47,15 @@ Route::prefix('admin')->middleware(['auth:sanctum', 'isAdmin'])->group(function 
     Route::get('contact-messages', [ContactController::class, 'index']);
     Route::put('contact-messages/{contactMessage}', [ContactController::class, 'update']);
     Route::delete('contact-messages/{contactMessage}', [ContactController::class, 'destroy']);
+    
+    // Admin User Management
+    Route::get('users', [AdminUserController::class, 'index']);
+    
+    Route::middleware('isSuperAdmin')->group(function () {
+        Route::post('users', [AdminUserController::class, 'store']);
+        Route::put('users/{admin_user}', [AdminUserController::class, 'update']);
+        Route::delete('users/{admin_user}', [AdminUserController::class, 'destroy']);
+    });
     
     Route::apiResource('brands', BrandController::class)->except(['index', 'show']);
     

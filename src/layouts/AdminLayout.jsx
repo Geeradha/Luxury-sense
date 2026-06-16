@@ -15,7 +15,8 @@ import {
   MessageSquare, 
   HelpCircle,
   LogOut,
-  ChevronRight
+  ChevronRight,
+  ShieldCheck
 } from 'lucide-react';
 
 const navItems = [
@@ -25,6 +26,7 @@ const navItems = [
   { to: '/admin/brands', label: 'Brands', icon: Award },
   { to: '/admin/orders', label: 'Orders', icon: ShoppingBag },
   { to: '/admin/customers', label: 'Patrons', icon: Users },
+  { to: '/admin/users', label: 'Admins', icon: ShieldCheck },
   { to: '/admin/contact-messages', label: 'Messages', icon: MessageSquare },
   { to: '/admin/questions', label: 'Inquiries', icon: HelpCircle },
 ];
@@ -50,7 +52,7 @@ export default function AdminLayout() {
           <div className="mt-6 h-px w-12 bg-luxury-gold/30" />
         </div>
 
-        <nav className="flex flex-1 flex-col gap-2" aria-label="Admin navigation">
+        <nav className="flex flex-1 flex-col gap-2 overflow-y-auto custom-scrollbar pr-2" aria-label="Admin navigation">
           {navItems.map((item) => (
             <NavLink
               key={item.to}

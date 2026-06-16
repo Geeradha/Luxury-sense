@@ -18,6 +18,8 @@ class User extends Authenticatable
         'password',
         'role',
         'is_admin',
+        'status',
+        'last_login_at',
         'otp_code',
         'phone_number',
         'address',
@@ -28,10 +30,17 @@ class User extends Authenticatable
     {
         return [
             'email_verified_at' => 'datetime',
+            'last_login_at' => 'datetime',
             'password' => 'hashed',
             'is_admin' => 'boolean',
         ];
     }
+
+    protected $hidden = [
+        'password',
+        'remember_token',
+        'otp_code',
+    ];
 
     public function orders()
     {
