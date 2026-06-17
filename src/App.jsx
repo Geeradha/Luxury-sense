@@ -38,6 +38,7 @@ export default function App() {
         <Route element={<PublicLayout />}>
           <Route path="/" element={<Landing />} />
           <Route path="/shop" element={<Catalog />} />
+          <Route path="/products" element={<Catalog />} />
           <Route path="/product" element={<Catalog />} />
           <Route path="/product/:id" element={<ProductDetailView />} />
           <Route path="/collections" element={<Collections />} />
