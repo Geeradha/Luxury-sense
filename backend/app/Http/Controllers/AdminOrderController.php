@@ -131,7 +131,7 @@ class AdminOrderController extends Controller
             return $order->fresh(['user', 'orderItems.product']);
         });
 
-        Mail::to($order->email)->send(new OrderStatusMail($updatedOrder));
+        Mail::to($order->email)->queue(new OrderStatusMail($updatedOrder));
 
         return $updatedOrder;
     }

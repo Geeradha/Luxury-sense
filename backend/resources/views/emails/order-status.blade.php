@@ -1,22 +1,46 @@
-<!DOCTYPE html>
-<html lang="en">
-<head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Order Status Update</title>
-</head>
-<body style="margin:0;padding:0;background:#faf7f2;font-family:Arial,Helvetica,sans-serif;color:#111827;">
-    <div style="max-width:640px;margin:0 auto;padding:40px 20px;">
-        <div style="background:#ffffff;border:1px solid #e5e7eb;border-radius:20px;padding:32px;box-shadow:0 18px 45px rgba(15,23,42,0.06);">
-            <p style="margin:0 0 12px;text-transform:uppercase;letter-spacing:0.24em;font-size:12px;color:#6b7280;">Luxury Sense</p>
-            <h1 style="margin:0 0 16px;font-size:28px;line-height:1.2;">Your order status has changed</h1>
-            <p style="margin:0 0 18px;font-size:16px;line-height:1.7;color:#374151;">
-                Hello {{ $order->customer_name }}, your order #{{ $order->id }} is now <strong>{{ ucfirst($order->status) }}</strong>.
-            </p>
-            <p style="margin:0;font-size:15px;line-height:1.7;color:#4b5563;">
-                Total: RS. {{ number_format((float) $order->total_amount, 2) }}
-            </p>
-        </div>
+@extends('emails.layouts.master')
+
+@section('title', 'Order Status Update')
+
+@section('content')
+    <h2 class="text-white" style="color: #ffffff;">Order Status Updated</h2>
+    <p style="color: #ffffff;">Dear {{ $order->customer_name }},</p>
+    <p style="color: #ffffff;">We are writing to inform you that the status of your order <strong class="text-gold" style="color: #d4af37;">#{{ $order->id }}</strong> has been updated to:</p>
+
+    <div style="text-align: center; margin: 30px 0;">
+        <span style="background-color: #d4af37; color: #000000; padding: 10px 25px; border-radius: 50px; font-weight: bold; text-transform: uppercase; letter-spacing: 2px;">
+            {{ strtoupper($order->status) }}
+        </span>
     </div>
-</body>
-</html>
+
+    @if($order->status === 'confirmed')
+        <p style="color: #ffffff;">Your order has been confirmed and is now being prepared for shipment. You will receive another notification once it has been dispatched.</p>
+    @elseif($order->status === 'completed')
+        <p style="color: #ffffff;">Excellence delivered. Your order has been marked as completed. We hope you enjoy your luxury selection.</p>
+    @elseif($order->status === 'rejected')
+        <p style="color: #ffffff;">We regret to inform you that your order could not be processed at this time. If you have already made a payment, a refund will be initiated shortly.</p>
+    @endif
+
+    <div style="border-top: 1px solid rgba(255, 255, 255, 0.05); margin-top: 30px; pt: 30px;">
+        <h3 class="text-gold" style="color: #d4af37;">Order Summary</h3>
+        <table class="order-table" style="width: 100%; border-collapse: collapse;">
+            <tbody>
+                @foreach($order->orderItems as $item)
+                    <tr>
+                        <td style="color: #ffffff; padding: 12px 0; border-bottom: 1px solid rgba(255, 255, 255, 0.05);">{{ $item->product->name }} (x{{ $item->quantity }})</td>
+                        <td style="text-align: right; color: #ffffff; padding: 12px 0; border-bottom: 1px solid rgba(255, 255, 255, 0.05);">RS. {{ number_format($item->price * $item->quantity, 2) }}</td>
+                    </tr>
+                @endforeach
+                <tr class="total-row">
+                    <td style="color: #ffffff; padding: 12px 0; font-weight: bold;">Total</td>
+                    <td style="text-align: right; color: #ffffff; padding: 12px 0; font-weight: bold;">RS. {{ number_format($order->total_amount, 2) }}</td>
+                </tr>
+            </tbody>
+        </table>
+    </div>
+
+    <div style="text-align: center; margin-top: 40px;">
+        <p style="color: #ffffff;">Thank you for choosing Luxury Sense.</p>
+        <a href="{{ config('app.url') }}/my-orders" class="button" style="color: #000000;">View Order Details</a>
+    </div>
+@endsection

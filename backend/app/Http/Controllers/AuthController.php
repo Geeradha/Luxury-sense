@@ -32,7 +32,7 @@ class AuthController extends Controller
             'otp' => $otpCode,
         ], now()->addMinutes(15));
 
-        Mail::to($validated['email'])->send(new OtpMail($otpCode));
+        Mail::to($validated['email'])->queue(new OtpMail($otpCode));
 
         return response()->json([
             'message' => 'Registration data saved. Please verify your email with the OTP sent to your inbox.',

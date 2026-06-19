@@ -6,6 +6,7 @@ use App\Http\Resources\OrderResource;
 use App\Models\Order;
 use App\Models\User;
 use App\Mail\AdminOrderNotificationMail;
+use App\Mail\CustomerOrderConfirmationMail;
 use Illuminate\Auth\Access\AuthorizationException;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
@@ -69,10 +70,14 @@ class OrderController extends Controller
         try {
             $admins = User::where('is_admin', true)->get();
             if ($admins->isNotEmpty()) {
-                Mail::to($admins)->send(new AdminOrderNotificationMail($order));
+                Mail::to($admins)->queue(new AdminOrderNotificationMail($order));
             }
+            
+            // Send confirmation & invoice to Customer
+            Mail::to($order->email)->queue(new CustomerOrderConfirmationMail($order));
+            
         } catch (\Exception $e) {
-            \Log::error('Failed to send admin order notification: ' . $e->getMessage());
+            \Log::error('Failed to send order notifications: ' . $e->getMessage());
         }
 
         return response()->json([

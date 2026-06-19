@@ -4,7 +4,7 @@
     <meta charset="utf-8">
     <title>Inquiry Received - Luxury Sense</title>
 </head>
-<body style="background-color: #121212; color: #f5f5f5; font-family: 'serif', 'Times New Roman', serif; margin: 0; padding: 0;">
+<body style="background-color: #121212; color: #ffffff; font-family: 'serif', 'Times New Roman', serif; margin: 0; padding: 0;">
     <table align="center" border="0" cellpadding="0" cellspacing="0" width="600" style="background-color: #121212; border-collapse: collapse; margin-top: 50px; margin-bottom: 50px; border: 1px solid #1a1a1a;">
         <tr>
             <td align="center" style="padding: 40px 0;">
@@ -15,7 +15,7 @@
             <td style="padding: 40px; background-color: #1a1a1a;">
                 <p style="font-size: 18px; margin-bottom: 25px; color: #ffffff;">Dear {{ $contactMessage->name }},</p>
                 
-                <p style="font-size: 14px; line-height: 1.8; color: #a1a1a1; margin-bottom: 30px;">
+                <p style="font-size: 14px; line-height: 1.8; color: #ffffff; margin-bottom: 30px;">
                     We have received your digital inquiry. Our dedicated concierge team is currently reviewing your message and will provide a personalized response within the next 24 business hours.
                 </p>
 
@@ -26,7 +26,7 @@
                     </p>
                 </div>
 
-                <p style="font-size: 14px; color: #a1a1a1; margin-bottom: 40px;">
+                <p style="font-size: 14px; color: #ffffff; margin-bottom: 40px;">
                     Thank you for choosing Luxury Sense. We look forward to curating your experience.
                 </p>
 
@@ -36,7 +36,7 @@
         </tr>
         <tr>
             <td align="center" style="padding: 30px; border-top: 1px solid #1a1a1a; background-color: #121212;">
-                <p style="font-size: 10px; color: #555555; text-transform: uppercase; letter-spacing: 0.2em; margin: 0;">
+                <p style="font-size: 10px; color: #ffffff; text-transform: uppercase; letter-spacing: 0.2em; margin: 0;">
                     &copy; {{ date('Y') }} Luxury Sense Boutique. All rights reserved.
                 </p>
             </td>
